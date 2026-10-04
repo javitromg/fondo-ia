@@ -164,8 +164,17 @@ def ejecutar(cfg: dict, ruta_config: str, intervalo: int = 60, sin_panel: bool =
     proceso, refresco = None, None
     senal_reinicio = Path(cfg["rutas"]["bd"]).resolve().parent / "REINICIAR"
 
+    senal_parar = senal_reinicio.with_name("PARAR")
     while True:
         ahora = _ahora()
+        # un archivo llamado PARAR en la carpeta apaga el fondo del todo (por ejemplo, el del PC cuando ya corre en un servidor)
+        if senal_parar.exists():
+            senal_parar.unlink()
+            senal_reinicio.unlink(missing_ok=True)
+            al.evento(ahora, "Sistema", "parada", "Fondo apagado a petición. Para volver a encenderlo, abre INICIAR.bat.")
+            al.cerrar()
+            print("Fondo apagado a petición (archivo PARAR).", flush=True)
+            sys.exit(0)
         # un archivo llamado REINICIAR en la carpeta hace que el programa se cierre y INICIAR.bat lo vuelva a abrir
         # con el código nuevo. Se espera a que no haya una minería en marcha para no dejarla huérfana.
         if senal_reinicio.exists() and proceso is None:
