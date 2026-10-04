@@ -226,7 +226,7 @@ El proyecto trae `Dockerfile` y `arrancar.sh` (el equivalente a `INICIAR.bat` en
 | Qué | Cómo |
 |---|---|
 | Disco persistente | Un volumen montado, por ejemplo en `/data`. En Railway el fondo lo detecta solo (`RAILWAY_VOLUME_MOUNT_PATH`); en otro sitio, variable `FONDO_DATOS=/data`. Ahí van la base, el histórico, los informes y las copias. Sin volumen, cada redespliegue lo borra todo. |
-| Contraseña del panel | Variable `FONDO_CLAVE_PANEL`, de 10 caracteres o más. Sin ella el panel **no se abre** hacia internet (el fondo sigue funcionando). |
+| Contraseña del panel | Variable `FONDO_CLAVE_PANEL`, de 10 caracteres o más. Sin ella el panel se queda **cerrado** hacia internet: solo responde `/salud` y no enseña ni acepta nada (el fondo sigue funcionando). |
 | Telegram | Variable `TELEGRAM_TOKEN`. |
 | Modelo de lenguaje (opcional) | Variable `ANTHROPIC_API_KEY`. |
 | Puerto | El que dé el servidor en `PORT`; no hay que tocar nada. |

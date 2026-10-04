@@ -1223,9 +1223,25 @@ def test_en_la_nube_el_panel_no_se_abre_sin_una_contrasena_decente_y_los_datos_v
 
     monkeypatch.setenv("PORT", "8794")
     monkeypatch.delenv("FONDO_CLAVE_PANEL", raising=False)
-    assert panel.arrancar(cfg) is None and "PANEL APAGADO" in capsys.readouterr().out            # abierto a internet y sin contraseña: no
-    monkeypatch.setenv("FONDO_CLAVE_PANEL", "corta")
-    assert panel.arrancar(cfg) is None
+    import json, urllib.error, urllib.request
+    for clave in (None, "corta"):                                                                 # abierto a internet sin una contraseña decente: cerrado
+        if clave:
+            monkeypatch.setenv("FONDO_CLAVE_PANEL", clave)
+        servidor = panel.arrancar(cfg)
+        try:
+            assert "PANEL CERRADO" in capsys.readouterr().out
+            salud = json.loads(urllib.request.urlopen("http://127.0.0.1:8794/salud", timeout=5).read())
+            assert salud["ok"] and salud["panel"] == "cerrado"                                    # el servidor sabe que vive...
+            for ruta in ("/", "/api/estado", "/static/oficina.js", "/entrar"):
+                with pytest.raises(urllib.error.HTTPError) as err:
+                    urllib.request.urlopen("http://127.0.0.1:8794" + ruta, timeout=5)
+                assert err.value.code == 503 and b"Patrimonio" not in err.value.read()            # ...pero no enseña nada
+            with pytest.raises(urllib.error.HTTPError) as err:
+                urllib.request.urlopen(urllib.request.Request("http://127.0.0.1:8794/api/kill", data=b"{}", headers={"X-Fondo": "1"}), timeout=5)
+            assert err.value.code == 503
+        finally:
+            servidor.shutdown()
+            servidor.server_close()
     monkeypatch.setenv("FONDO_CLAVE_PANEL", secrets.token_urlsafe(12))
     servidor = panel.arrancar(cfg)
     try:

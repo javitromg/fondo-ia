@@ -290,6 +290,40 @@ def _manejador(cfg: dict, reloj):
     return Manejador
 
 
+def _cerrado(cfg: dict, reloj):
+    """Panel sin contraseña en un servidor abierto a internet: no enseña ni acepta nada. Solo contesta a /salud,
+    para que el servidor sepa que el fondo vive, y explica qué falta."""
+    class Cerrado(BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def _responder(self, codigo: int, cuerpo: bytes, tipo: str):
+            self.send_response(codigo)
+            self.send_header("Content-Type", tipo)
+            self.send_header("Content-Length", str(len(cuerpo)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(cuerpo)
+
+        def do_GET(self):
+            if self.path.split("?")[0] == "/salud":
+                try:
+                    al = Almacen(cfg["rutas"]["bd"])
+                    latido = al.get("latido")
+                    al.cerrar()
+                    sin = None if latido is None else int((reloj() - pd.Timestamp(latido)).total_seconds())
+                except Exception:
+                    sin = None
+                return self._responder(200, json.dumps({"ok": True, "segundos_sin_ciclo": sin, "panel": "cerrado"}).encode(), "application/json; charset=utf-8")
+            self._responder(503, "Panel cerrado: falta la contraseña. Pon la variable FONDO_CLAVE_PANEL (10 caracteres o más) en el servidor y se abre solo. "
+                                 "El fondo sigue funcionando.".encode("utf-8"), "text/plain; charset=utf-8")
+
+        def do_POST(self):
+            self._responder(503, b"Panel cerrado.", "text/plain; charset=utf-8")
+
+    return Cerrado
+
+
 def arrancar(cfg: dict, reloj=None, en_hilo: bool = True, puerto: int | None = None):
     """Levanta el panel. En casa solo escucha en este ordenador. Si el entorno da un PORT (nube) escucha hacia fuera,
     y entonces exige contraseña: un panel abierto a internet dejaría a cualquiera parar el fondo."""
@@ -297,13 +331,14 @@ def arrancar(cfg: dict, reloj=None, en_hilo: bool = True, puerto: int | None = N
     nube = os.environ.get("PORT", "").isdigit()
     puerto = puerto or (int(os.environ["PORT"]) if nube else cfg["panel"]["puerto"])
     host = cfg["panel"].get("host") or ("0.0.0.0" if nube else "127.0.0.1")
+    manejador = _manejador(cfg, reloj)
     if host not in ("127.0.0.1", "localhost", "::1"):
         clave = clave_panel(cfg)
         if clave is None or len(clave) < 10:
-            print("PANEL APAGADO: para abrirlo fuera de este ordenador hace falta una contraseña de al menos 10 caracteres "
-                  "en la variable FONDO_CLAVE_PANEL. El fondo sigue funcionando sin panel.", flush=True)
-            return None
-    servidor = ThreadingHTTPServer((host, puerto), _manejador(cfg, reloj))
+            print("PANEL CERRADO: para abrirlo fuera de este ordenador hace falta una contraseña de al menos 10 caracteres "
+                  "en la variable FONDO_CLAVE_PANEL. El fondo sigue funcionando; solo responde la comprobación de salud.", flush=True)
+            manejador = _cerrado(cfg, reloj)
+    servidor = ThreadingHTTPServer((host, puerto), manejador)
     if en_hilo:
         threading.Thread(target=servidor.serve_forever, daemon=True).start()
     else:
