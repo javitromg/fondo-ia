@@ -1,0 +1,14 @@
+*.db
+.pytest_cache/
+.venv/
+REINICIAR
+__pycache__/
+copias/
+datos/
+demo/
+informes/
+llm_clave.txt
+panel_clave.txt
+registro.txt
+registro_incubar.txt
+telegram_token.txt

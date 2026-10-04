@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fondo IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&display=swap" rel="stylesheet">
+<script type="importmap">{"imports": {"three": "/static/three.module.min.js", "three/addons/": "/static/"}}</script>
+<style>
+:root{
+  --fondo:#f3f5f3; --panel:#ffffff; --tinta:#14242d; --tenue:#55676d; --linea:#d8dedc;
+  --laton:#8a6a1f; --serie:#2a78d6; --gana:#0a7a0a; --pierde:#b42b2b; --aviso:#9a5b00; --pista:#e6ebe9;
+}
+@media (prefers-color-scheme:dark){:root{
+  --fondo:#10202b; --panel:#172c39; --tinta:#eef0ea; --tenue:#9fb0b5; --linea:#2a4352;
+  --laton:#c9a24b; --serie:#3987e5; --gana:#4cc24c; --pierde:#e66767; --aviso:#e0a03c; --pista:#22394a;
+}}
+*{box-sizing:border-box}
+html{font-size:15px}
+body{margin:0;background:var(--fondo);color:var(--tinta);font-family:Archivo,system-ui,"Segoe UI",sans-serif;line-height:1.45;font-variant-numeric:tabular-nums}
+h1,h2,p,dl,dd,ul{margin:0;padding:0}
+h2{font-size:1rem;font-weight:600;font-stretch:112%;margin-bottom:.75rem}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:2px solid var(--laton);outline-offset:2px}
+a{color:inherit}
+
+.barra{display:flex;flex-wrap:wrap;gap:.5rem 1.25rem;align-items:center;justify-content:space-between;padding:.8rem 1.25rem;border-bottom:1px solid var(--linea)}
+.marca{font-stretch:125%;font-weight:700;font-size:1.05rem}
+.marca span{font-stretch:100%;font-weight:400;color:var(--tenue);margin-left:.6rem}
+.situacion{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;color:var(--tenue);font-size:.9rem}
+.pildora{border:1px solid var(--linea);border-radius:999px;padding:.15rem .7rem;color:var(--tinta)}
+.enlace{background:none;border:0;padding:0;color:var(--tenue);text-decoration:underline;font-size:.9rem}
+.pildora.parado{border-color:var(--pierde);color:var(--pierde);font-weight:600}
+.pildora.pausa{border-color:var(--aviso);color:var(--aviso);font-weight:600}
+
+.rejilla{display:grid;gap:1.25rem;padding:1.25rem;grid-template-columns:minmax(0,1fr)}
+@media (min-width:860px){.rejilla{grid-template-columns:290px minmax(0,1fr)}.actividad{grid-column:1 / -1}}
+@media (min-width:1280px){.rejilla{grid-template-columns:300px minmax(0,1fr) 350px}.actividad{grid-column:auto}}
+.columna{display:flex;flex-direction:column;gap:1.25rem;min-width:0}
+.bloque{background:var(--panel);border-radius:10px;padding:1.1rem 1.2rem;min-width:0}
+
+.patrimonio{border-top:3px solid var(--laton)}
+.cifra{font-size:2.5rem;font-weight:600;font-stretch:118%;line-height:1.1;letter-spacing:-.01em}
+.cifra small{font-size:1.1rem;font-weight:400;color:var(--tenue);margin-left:.25rem}
+.pie-cifra{color:var(--tenue);margin:.15rem 0 1rem}
+.datos{display:grid;grid-template-columns:1fr auto;gap:.35rem 1rem}
+.datos dt{color:var(--tenue)}.datos dd{text-align:right;font-weight:500}
+.sube{color:var(--gana)}.baja{color:var(--pierde)}
+
+.limite{margin-bottom:.85rem}.limite:last-child{margin-bottom:0}
+.limite-cab{display:flex;justify-content:space-between;gap:.5rem;font-size:.9rem}
+.limite-cab span:last-child{color:var(--tenue)}
+.pista{height:8px;border-radius:4px;background:var(--pista);margin-top:.3rem;overflow:hidden}
+.relleno{height:100%;border-radius:4px;background:var(--laton);min-width:2px}
+.limite.cerca .relleno{background:var(--aviso)}.limite.tope .relleno{background:var(--pierde)}
+.limite .nota{font-size:.82rem;color:var(--aviso);margin-top:.2rem}.limite.tope .nota{color:var(--pierde)}
+.simbolos{margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--linea);font-size:.9rem}
+.simbolos div{display:flex;justify-content:space-between;padding:.1rem 0}
+
+.parada p{color:var(--tenue);font-size:.9rem;margin-bottom:.75rem}
+.boton{border:1px solid var(--linea);background:transparent;border-radius:8px;padding:.55rem .9rem;font-weight:600}
+.boton.peligro{border-color:var(--pierde);color:var(--pierde)}
+.boton.firme{background:var(--pierde);border-color:var(--pierde);color:#fff}
+.botones{display:flex;flex-wrap:wrap;gap:.5rem}
+.aviso-parada{color:var(--pierde);font-weight:600;margin-bottom:.5rem}
+
+.aprende p{margin-bottom:.5rem}.aprende .tenue{color:var(--tenue);font-size:.9rem}
+.embudo{display:grid;grid-template-columns:1fr auto;gap:.15rem 1rem;font-size:.9rem;margin:.6rem 0}
+.embudo span:nth-child(odd){color:var(--tenue)}.embudo span:nth-child(even){text-align:right}
+.titulares{list-style:none;margin:.4rem 0 0;font-size:.9rem}.titulares li{margin-bottom:.35rem}.titulares .tenue{font-size:.8rem}
+.sub-titulo{font-size:1rem;margin:1.1rem 0 .4rem}.modelo{border-top:1px solid var(--linea,rgba(128,128,128,.25));padding-top:.6rem;margin-top:.6rem}
+
+.grafica{position:relative}
+.grafica svg{display:block;width:100%;height:240px}
+.grafica .eje{stroke:var(--linea);stroke-width:1}.grafica .base{stroke:var(--tenue);stroke-width:1;stroke-dasharray:4 4}
+.grafica .linea{fill:none;stroke:var(--serie);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.grafica text{fill:var(--tenue);font-size:11px}
+.grafica .cursor{stroke:var(--tenue);stroke-width:1}.grafica .punto{fill:var(--serie);stroke:var(--panel);stroke-width:2}
+.globo{position:absolute;pointer-events:none;background:var(--tinta);color:var(--fondo);border-radius:6px;padding:.3rem .55rem;font-size:.85rem;white-space:nowrap;transform:translate(-50%,-130%)}
+.vacio{color:var(--tenue);padding:.5rem 0}
+
+.tabla{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-stretch:92%}
+th,td{padding:.45rem .6rem;text-align:right;white-space:nowrap;border-bottom:1px solid var(--linea)}
+th{font-weight:500;color:var(--tenue);font-size:.85rem}
+th:first-child,td:first-child{text-align:left;padding-left:0}th:last-child,td:last-child{padding-right:0}
+tr:last-child td{border-bottom:0}
+td .sub{display:block;color:var(--tenue);font-size:.85rem}
+.chispa{width:84px;height:22px;display:block;margin-left:auto}.chispa polyline{fill:none;stroke:var(--serie);stroke-width:1.5}
+
+.filtros{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.75rem}
+.filtro{border:1px solid var(--linea);background:transparent;border-radius:999px;padding:.15rem .7rem;font-size:.88rem;color:var(--tenue)}
+.filtro[aria-pressed="true"]{background:var(--tinta);color:var(--fondo);border-color:var(--tinta)}
+.sucesos{list-style:none;max-height:70vh;overflow-y:auto}
+.sucesos li{padding:.55rem 0;border-bottom:1px solid var(--linea);font-size:.92rem}
+.sucesos li:last-child{border-bottom:0}
+.sucesos .quien{display:flex;justify-content:space-between;gap:.5rem;color:var(--tenue);font-size:.82rem;margin-bottom:.1rem}
+.sucesos .quien b{color:var(--laton);font-weight:600}
+
+/* ---- sala isométrica: cada bot es una estrategia real ---- */
+:root{--s-suelo:#e3e8e6;--s-linea:#cfd7d4;--s-pared:#c9d2cf;--z-mesa:#efe3c2;--z-inc:#d3e2f3;--z-rie:#f3d6d3;--z-com:#dedfe6;--z-lab:#cfe9df;--z-aud:#e9dcc6;--z-sel:#dcd3ee;--b-aud:#a8641c;--b-sel:#6b4fb3;--z-car:#d9e6d0;--z-inv:#f0dfe8;--z-mac:#d5e4ea;--z-dat:#e6e2d2;--z-eje:#ecdccf;--z-ope:#dfe1e3;--b-car:#4f7a2a;--b-inv:#a23b72;--b-mac:#1f6f8b;--b-dat:#7a6a1f;--b-eje:#b0522a;--b-ope:#5a6570;--z-not:#e4dcc9;--z-sen:#e6d6ea;--z-ana:#d6e3d8;--b-not:#8a5a2b;--b-sen:#8a3fa0;--b-alc:#0a7a0a;--b-baj:#b42b2b;--b-mod:#44546a;
+  --s-mueble:#b08f62;--s-maquina:#6f7f88;--b-fondo:#b98a25;--b-inc:#4c7fc0;--b-rie:#c0504d;--b-com:#5d6475;--b-lab:#2f9a78;--s-apagada:#8a989d}
+@media (prefers-color-scheme:dark){:root{--s-suelo:#1b3140;--s-linea:#24404f;--s-pared:#14262f;--z-mesa:#3a3524;--z-inc:#1e3852;--z-rie:#40282c;--z-com:#2a3140;--z-lab:#1b3d38;--z-aud:#3b3020;--z-sel:#2c2545;--b-aud:#e3a04f;--b-sel:#a48cf0;--z-car:#26381f;--z-inv:#3c2433;--z-mac:#1c3440;--z-dat:#35311f;--z-eje:#3d2a20;--z-ope:#2b3238;--b-car:#8fc45f;--b-inv:#e07ab0;--b-mac:#56b6d6;--b-dat:#cdb85a;--b-eje:#e88b5e;--b-ope:#aab4bd;--z-not:#383021;--z-sen:#35253b;--z-ana:#23362a;--b-not:#d9a56a;--b-sen:#cf8be3;--b-alc:#4cc24c;--b-baj:#e66767;--b-mod:#9fb1c9;
+  --s-mueble:#7c6648;--s-maquina:#44606e;--b-fondo:#d9b25a;--b-inc:#5e9be6;--b-rie:#e07a76;--b-com:#a9b0c4;--b-lab:#4fc7a0;--s-apagada:#3a5565}}
+.sala-bloque{margin:1.25rem 1.25rem 0;background:var(--panel);border-radius:10px;padding:1.1rem 1.2rem}
+.sala-cab{display:flex;flex-wrap:wrap;gap:.4rem 1.5rem;align-items:baseline;justify-content:space-between;margin-bottom:.5rem}
+.sala-cab h2{margin:0}.sala-cab p{color:var(--tenue);font-size:.9rem;flex:1}.sala-cab .boton{padding:.3rem .8rem;font-size:.9rem}.sala-cab .boton:disabled{opacity:.5}
+.sala-cuerpo{display:grid;gap:1rem;grid-template-columns:minmax(0,1fr)}
+@media (min-width:1100px){.sala-cuerpo{grid-template-columns:minmax(0,1fr) 300px}}
+.sala{position:relative;min-width:0;overflow:hidden}
+.oficina{position:relative;min-width:0;overflow:hidden;border-radius:8px}
+.oficina canvas{display:block;cursor:grab;outline:0}
+.oficina canvas:active{cursor:grabbing}
+.mandos{position:absolute;top:.5rem;right:.5rem;display:flex;gap:.3rem;z-index:2}
+.mandos button{background:var(--panel);border:1px solid var(--linea);border-radius:6px;min-width:2rem;height:2rem;padding:0 .55rem;font-size:.9rem;line-height:1}
+.of-pista{position:absolute;left:.6rem;bottom:.5rem;z-index:2;color:var(--tenue);font-size:.8rem;pointer-events:none;background:var(--panel);border-radius:4px;padding:.05rem .4rem;opacity:.85}
+.conmutador[hidden]{display:none}
+.conmutador{display:flex;border:1px solid var(--linea);border-radius:6px;overflow:hidden}
+.conmutador button{background:none;border:0;padding:.3rem .8rem;font-size:.9rem}
+.conmutador button[aria-pressed="true"]{background:var(--tinta);color:var(--fondo)}
+.sala canvas{display:block;margin:0 auto;cursor:pointer;touch-action:pan-y}
+.bocadillo{position:absolute;max-width:230px;background:var(--tinta);color:var(--fondo);border-radius:8px;padding:.35rem .6rem;font-size:.82rem;line-height:1.3;transform:translate(-50%,-100%);pointer-events:none}
+.bocadillo b{display:block;font-weight:600;color:var(--laton)}
+.bocadillo::after{content:"";position:absolute;left:50%;bottom:-6px;margin-left:-6px;border:6px solid transparent;border-top-color:var(--tinta);border-bottom:0}
+.rotulo{position:absolute;background:var(--panel);border:1px solid var(--linea);border-radius:6px;padding:.1rem .45rem;font-size:.8rem;transform:translate(-50%,-100%);pointer-events:none;white-space:nowrap}
+.ficha{border-left:1px solid var(--linea);padding-left:1rem;font-size:.92rem;min-width:0}
+@media (max-width:1099px){.ficha{border-left:0;border-top:1px solid var(--linea);padding:1rem 0 0}}
+.ficha h3{margin:0;font-size:1.05rem;font-stretch:112%}.ficha .papel{color:var(--tenue);margin-bottom:.6rem}
+.ficha dl{display:grid;grid-template-columns:1fr auto;gap:.25rem 1rem;margin:.6rem 0}.ficha dt{color:var(--tenue)}.ficha dd{text-align:right}
+.ficha ul{list-style:none;margin:.5rem 0 0}.ficha li{padding:.3rem 0;border-top:1px solid var(--linea);font-size:.86rem}
+.ficha li span{color:var(--tenue);font-size:.8rem;display:block}
+.ficha .chispa{width:100%;height:40px;margin:.4rem 0}
+.leyenda{display:flex;flex-wrap:wrap;gap:.3rem 1.2rem;color:var(--tenue);font-size:.85rem;margin-top:.5rem}
+.leyenda i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:.35rem;vertical-align:-1px}
+</style>
+</head>
+<body>
+<header class="barra">
+  <div class="marca">Fondo IA<span id="exchange"></span></div>
+  <div class="situacion">
+    <span class="pildora">Papel: sin dinero real</span>
+    <span class="pildora" id="mercado" hidden></span>
+    <span class="pildora" id="situacion">Conectando</span>
+    <span id="reloj"></span>
+    <form method="post" action="/salir" id="salir" hidden><button class="enlace">Cerrar sesión</button></form>
+  </div>
+</header>
+
+<section class="sala-bloque" aria-label="Sala de trading">
+  <div class="sala-cab"><h2>Sala</h2><p id="sala-resumen"></p>
+    <div class="conmutador" id="conmutador" hidden><button data-vista="3d" aria-pressed="true">Oficina 3D</button><button data-vista="plano" aria-pressed="false">Plano</button></div>
+    <button class="boton" id="reunir" hidden>Reunir al comité</button></div>
+  <div class="sala-cuerpo">
+    <div class="vistas">
+      <div class="oficina" id="oficina" hidden>
+        <div class="mandos"><button id="of-mas" aria-label="Acercar">+</button><button id="of-menos" aria-label="Alejar">−</button><button id="of-centro">Centrar</button></div>
+        <p class="of-pista">Arrastra para girar. Botón derecho o dos dedos para desplazar.</p>
+      </div>
+      <div class="sala" id="sala"><canvas id="lienzo" role="img" aria-label="Vista de la sala: cada bot es una estrategia. El detalle está en las tablas de abajo."></canvas></div>
+    </div>
+    <div class="ficha" id="ficha"></div>
+  </div>
+  <div class="leyenda">
+    <span><i style="background:var(--b-fondo)"></i>Zona dorada: bots con capital</span>
+    <span><i style="background:var(--b-inc)"></i>Zona azul: bots en incubadora</span>
+    <span><i style="background:var(--gana)"></i>Pantalla con ▲: largo</span>
+    <span><i style="background:var(--pierde)"></i>Pantalla con ▼: corto</span>
+    <span><i style="background:var(--s-apagada)"></i>Pantalla apagada: fuera de mercado</span>
+    <span><i style="background:var(--laton);border-radius:50%"></i>Estrella: primero de la liga</span>
+  </div>
+</section>
+
+<main class="rejilla">
+  <div class="columna">
+    <section class="bloque patrimonio">
+      <div class="cifra" id="equity">—</div>
+      <p class="pie-cifra">Patrimonio del fondo</p>
+      <dl class="datos">
+        <dt>Hoy</dt><dd id="hoy">—</dd>
+        <dt>Desde el inicio</dt><dd id="total">—</dd>
+        <dt>En caja</dt><dd id="caja">—</dd>
+        <dt>Invertido</dt><dd id="invertido">—</dd>
+      </dl>
+    </section>
+
+    <section class="bloque">
+      <h2>Margen de riesgo</h2>
+      <div id="limites"></div>
+      <div class="simbolos" id="simbolos" hidden></div>
+    </section>
+
+    <section class="bloque parada" id="parada"></section>
+
+    <section class="bloque aprende">
+      <h2>Aprendizaje</h2>
+      <div id="aprendizaje"></div>
+    </section>
+
+    <section class="bloque aprende" id="bloque-analistas" hidden>
+      <h2>Analistas</h2>
+      <div id="analistas"></div>
+    </section>
+
+    <section class="bloque aprende" id="bloque-apoyo" hidden>
+      <h2>Departamentos de apoyo</h2>
+      <div id="apoyo"></div>
+    </section>
+  </div>
+
+  <div class="columna">
+    <section class="bloque">
+      <h2>Evolución del patrimonio</h2>
+      <div class="grafica" id="grafica"></div>
+    </section>
+    <section class="bloque">
+      <h2>Liga de bots</h2>
+      <div class="tabla" id="liga"></div>
+    </section>
+    <section class="bloque">
+      <h2 id="t-fondo">Con capital</h2>
+      <div class="tabla" id="tabla-fondo"></div>
+    </section>
+    <section class="bloque">
+      <h2 id="t-incubadora">Incubadora</h2>
+      <div class="tabla" id="tabla-incubadora"></div>
+    </section>
+  </div>
+
+  <aside class="columna actividad">
+    <section class="bloque">
+      <h2>Actividad</h2>
+      <div class="filtros" id="filtros"></div>
+      <ul class="sucesos" id="sucesos"></ul>
+    </section>
+  </aside>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const num = (v, d = 2) => new Intl.NumberFormat('es-ES', {minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: 'always'}).format(v);
+const pct = (v, d = 2) => (v > 0 ? '+' : v < 0 ? '−' : '') + num(Math.abs(v) * 100, d) + ' %';
+const signo = v => v > 0 ? 'sube' : v < 0 ? 'baja' : '';
+const fecha = ts => new Date(String(ts).replace(' ', 'T'));
+const hora = ts => fecha(ts).toLocaleTimeString('es-ES', {hour: '2-digit', minute: '2-digit'});
+const dia = ts => fecha(ts).toLocaleDateString('es-ES', {day: 'numeric', month: 'short'});
+const diaHora = ts => dia(ts) + ', ' + hora(ts);
+
+let estado = null, filtro = 'Todo', confirmando = false, vistoCurva = null, vistoEvento = null;
+
+async function cargar() {
+  try {
+    const r = await fetch('/api/estado', {cache: 'no-store'});
+    if (r.status === 401) { location.href = '/entrar'; return; }      // la sesión ha caducado
+    if (!r.ok) throw new Error();
+    estado = await r.json();
+    pintar();
+  } catch (e) {
+    const s = $('situacion');
+    s.textContent = 'Sin conexión con el fondo';
+    s.className = 'pildora pausa';
+  }
+}
+
+function pintar() {
+  const e = estado, f = e.fondo, r = e.riesgos;
+  $('exchange').textContent = e.exchange;
+  $('reloj').textContent = 'Actualizado a las ' + fecha(e.ahora).toLocaleTimeString('es-ES');
+  const s = $('situacion');
+  const colgado = e.sin_ciclar_s != null && e.sin_ciclar_s > 180;      // la mesa cicla cada minuto: tres sin hacerlo ya es raro
+  s.textContent = r.kill ? 'Parado' : colgado ? `Sin ciclar desde hace ${Math.round(e.sin_ciclar_s / 60)} min` : r.pausa ? 'En pausa hasta mañana' : 'Operando';
+  s.className = 'pildora' + (r.kill ? ' parado' : r.pausa || colgado ? ' pausa' : '');
+  $('salir').hidden = !e.protegido;
+
+  $('equity').innerHTML = num(f.equity) + '<small>$</small>';
+  $('hoy').textContent = pct(f.hoy); $('hoy').className = signo(f.hoy);
+  $('total').textContent = pct(f.total); $('total').className = signo(f.total);
+  $('caja').textContent = num(f.caja) + ' $';
+  $('invertido').textContent = num(f.invertido * 100, 0) + ' %';
+
+  $('limites').innerHTML = r.limites.map(l => {
+    const uso = Math.min(l.uso / l.max, 1), clase = uso >= 1 ? ' tope' : uso >= 0.8 ? ' cerca' : '';
+    const v = x => l.pct ? num(x * 100, 1) + ' %' : num(x, 2) + 'x';
+    const nota = uso >= 1 ? 'Límite alcanzado' : uso >= 0.8 ? 'Cerca del límite' : '';
+    return `<div class="limite${clase}"><div class="limite-cab"><span>${l.nombre}</span><span>${v(l.uso)} de ${v(l.max)}</span></div>
+      <div class="pista"><div class="relleno" style="width:${(uso * 100).toFixed(1)}%"></div></div>${nota ? `<div class="nota">${nota}</div>` : ''}</div>`;
+  }).join('');
+  const sim = $('simbolos');
+  sim.hidden = !r.por_simbolo.length;
+  sim.innerHTML = r.por_simbolo.map(x => `<div><span>${esc(x.simbolo)}</span><span>${x.expo >= 0 ? 'largo' : 'corto'} ${num(Math.abs(x.expo), 2)}x de ${num(r.simbolo_max, 2)}x</span></div>`).join('');
+
+  pintarParada(); pintarAprendizaje(); pintarApoyo(); pintarAnalistas(); pintarLiga(); pintarTablas();
+  Sala.actualizar(e);
+  if (Oficina) Oficina.actualizar(e);
+  // la gráfica y la actividad solo se repintan si hay algo nuevo, para no cortar el cursor ni el scroll
+  const ultimo = e.eventos.length ? e.eventos[e.eventos.length - 1].id : 0;
+  const huella = e.curva.length + ':' + (e.curva.length ? e.curva[e.curva.length - 1][1] : '');
+  if (huella !== vistoCurva) { vistoCurva = huella; pintarGrafica(); }
+  if (ultimo !== vistoEvento) { vistoEvento = ultimo; pintarActividad(); }
+}
+
+function pintarParada() {
+  const r = estado.riesgos, caja = $('parada');
+  if (r.kill) {
+    caja.innerHTML = `<p class="aviso-parada">Fondo parado: ${esc(r.motivo || 'kill switch')}.</p>
+      <p>No se abre ninguna posición hasta que lo reanudes. La caída se volverá a medir desde el patrimonio actual.</p>
+      <div class="botones">${confirmando ? '<button class="boton firme" data-accion="reanudar">Confirmar y reanudar</button><button class="boton" data-accion="cancelar">Cancelar</button>'
+        : '<button class="boton" data-accion="pedir">Reanudar operativa</button>'}</div>`;
+  } else {
+    caja.innerHTML = `<h2>Parada de emergencia</h2><p>Cierra todas las posiciones del fondo en el siguiente ciclo y deja de operar hasta que lo reanudes.</p>
+      <div class="botones">${confirmando ? '<button class="boton firme" data-accion="parar">Confirmar y parar todo</button><button class="boton" data-accion="cancelar">Cancelar</button>'
+        : '<button class="boton peligro" data-accion="pedir">Parar todo</button>'}</div>`;
+  }
+}
+$('parada').addEventListener('click', async ev => {
+  const a = ev.target.dataset.accion;
+  if (!a) return;
+  if (a === 'pedir') { confirmando = true; return pintarParada(); }
+  confirmando = false;
+  if (a === 'cancelar') return pintarParada();
+  await fetch('/api/kill', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Fondo': '1'}, body: JSON.stringify({accion: a})});
+  cargar();
+});
+
+function pintarAprendizaje() {
+  const a = estado.aprendizaje, u = a.ultima;
+  let h = '';
+  if (a.en_curso) h += `<p>Minando ahora con los datos más recientes (desde las ${hora(a.en_curso.inicio)}).</p>`;
+  if (u) {
+    h += `<p>Última ronda: ${diaHora(u.ts)}.</p><div class="embudo">` + u.embudo.map(([k, v]) => `<span>${esc(k[0].toUpperCase() + k.slice(1))}</span><span>${num(v, 0)}</span>`).join('');
+    if (u.placebo && u.placebo.length) h += `<span>Hallazgos en ruido puro, por ronda</span><span>${u.placebo.join(', ')}</span>`;
+    h += `</div><p>${esc(u.veredicto)}</p><p class="tenue">${u.nuevas} nuevas a incubadora. ${a.proxima ? 'Próxima ronda: ' + dia(a.proxima) + '.' : ''} <a href="/informe" target="_blank" rel="noopener">Abrir informe</a></p>`;
+  } else if (!a.en_curso) {
+    h += `<p class="tenue">Todavía no se ha minado. En modo automático la primera ronda empieza sola y se repite cada ${a.cada_dias} días.</p>`;
+  }
+  const fam = (estado.familias || []).filter(f => f.pruebas + f.promocionadas + f.despedidas > 0);
+  if (fam.length) {
+    const mas = fam.filter(f => f.peso >= 1.15).sort((a, b) => b.peso - a.peso), menos = fam.filter(f => f.peso <= 0.85);
+    const lista = fs => fs.map(f => esc(f.nombre.replace(/_/g, ' ')) + ' ×' + num(f.peso, 1)).join(', ');
+    h += '<p class="tenue">' + (mas.length || menos.length ? (mas.length ? 'Busca más en: ' + lista(mas) + '. ' : '') + (menos.length ? 'Busca menos en: ' + lista(menos) + '.' : '')
+      : 'Reparte la búsqueda por igual entre todos los tipos de estrategia: todavía ninguno ha destacado.') + '</p>';
+  }
+  const bib = estado.biblioteca || [];
+  if (bib.length) {
+    h += '<h3 class="sub-titulo">Modelos publicados</h3><p class="tenue">Reglas fijas sacadas de estudios publicados. No se minan: se comparan con comprar y mantener y con el ruido, y se vigilan en papel.</p>';
+    h += bib.map(b => `<div class="modelo"><p><strong>${esc(b.nombre.replace(/_/g, ' '))}</strong>, velas de ${esc(b.tf)}. ${esc(b.fuente)}.</p>
+      <div class="embudo"><span>Sharpe del modelo</span><span>${num(b.modelo.sharpe, 2)}</span><span>Sharpe de comprar y mantener</span><span>${num(b.referencia.sharpe, 2)}</span>
+      <span>Caída máxima, modelo y mantener</span><span>${num(b.modelo.dd_max * 100, 0)} % y ${num(b.referencia.dd_max * 100, 0)} %</span>
+      <span>Frente al ruido</span><span>${b.p_valor == null ? 'sin medir' : 'p = ' + num(b.p_valor, 2)}</span><span>Bots contratados</span><span>${b.bots || 0}</span></div>
+      <p class="tenue">${esc(b.veredicto)}</p></div>`).join('');
+  }
+  h += `<p class="tenue">Descartadas hasta hoy: ${estado.descartadas}.</p>`;
+  $('aprendizaje').innerHTML = h;
+}
+
+function pintarApoyo() {
+  const a = estado.apoyo || {}, filas = [];
+  const m = a.macro, pil = $('mercado');
+  pil.hidden = !m;
+  if (m) { pil.textContent = `Mercado ${m.tendencia}, ${m.clima}`; pil.title = m.texto; filas.push(['Macro', m.texto, m.ts]); }
+  if (a.datos) filas.push(['Datos', a.datos.limpio ? `${a.datos.series} series al día, sin huecos ni velas imposibles.`
+    : `Hay problemas en el histórico: ${[a.datos.faltan.length && a.datos.faltan.length + ' series que faltan', a.datos.atrasadas.length && a.datos.atrasadas.length + ' atrasadas', a.datos.con_huecos.length && a.datos.con_huecos.length + ' con huecos', a.datos.imposibles.length && a.datos.imposibles.length + ' con velas imposibles'].filter(Boolean).join(', ')}.`, a.datos.ts, !a.datos.limpio]);
+  if (a.ejecucion) filas.push(['Ejecución', a.ejecucion.texto, a.ejecucion.ts, a.ejecucion.caras.length > 0]);
+  if (a.cartera) filas.push(['Cartera', a.cartera.texto, a.cartera.ts]);
+  if (a.operaciones) filas.push(['Operaciones', a.operaciones.texto + ` ${a.operaciones.cuentas} cuentas, ${a.operaciones.ordenes} órdenes.`, a.operaciones.ts, a.operaciones.incidencias.length > 0]);
+  $('bloque-apoyo').hidden = !filas.length;
+  $('apoyo').innerHTML = filas.map(([n, t, ts, mal]) => `<div class="modelo"><p><strong>${esc(n)}</strong> <span class="tenue">${diaHora(ts)}</span></p><p${mal ? ' style="color:var(--aviso)"' : ''}>${esc(t)}</p></div>`).join('');
+}
+
+function pintarAnalistas() {
+  const a = estado.analistas || {}, s = a.sentimiento, n = a.noticias, d = a.debate, llm = a.llm || {};
+  $('bloque-analistas').hidden = !(s || n || d);
+  let h = '<p class="tenue">Informan a la casa. Ninguna orden ni reparto de capital depende de ellos.</p>';
+  if (s) h += `<div class="modelo"><p><strong>Sentimiento</strong> <span class="tenue">${diaHora(s.ts)}</span></p><p>${esc(s.texto)}</p></div>`;
+  if (n) {
+    h += `<div class="modelo"><p><strong>Noticias</strong> <span class="tenue">${diaHora(n.ts)}</span></p><p>${esc(n.texto)}</p>`;
+    if (n.destacados.length) h += '<ul class="titulares">' + n.destacados.map(t => `<li>${/^https?:\/\//.test(t.enlace) ? `<a href="${esc(t.enlace)}" target="_blank" rel="noopener noreferrer">${esc(t.titulo)}</a>` : esc(t.titulo)} <span class="tenue">${esc(t.fuente)}${t.monedas.length ? ', ' + esc(t.monedas.join(' ')) : ''}</span></li>`).join('') + '</ul>';
+    h += '</div>';
+  }
+  if (d) h += `<div class="modelo"><p><strong>Debate del día</strong> <span class="tenue">${diaHora(d.ts)}</span></p>
+    <p><strong style="color:var(--gana)">Alcista.</strong> ${esc(d.alcista)}</p><p><strong style="color:var(--pierde)">Bajista.</strong> ${esc(d.bajista)}</p>
+    <p><strong>Moderador.</strong> ${esc(d.conclusion)}</p><p class="tenue">Lo escribe un modelo de lenguaje (${esc(d.modelo)}): es opinión y no decide nada en el fondo.</p></div>`;
+  else h += `<div class="modelo"><p><strong>Debate del día</strong></p><p class="tenue">${llm.activo ? 'Hay clave: el debate sale tras la próxima actualización de datos, que es cada hora.' : 'Apagado. Necesita un modelo de lenguaje de pago: pega tu clave de la API en un archivo llamado llm_clave.txt dentro de la carpeta del fondo y se enciende solo en menos de una hora.'}</p></div>`;
+  if (llm.error) h += `<p style="color:var(--aviso)">Modelo de lenguaje: ${esc(llm.error)}</p>`;
+  if (llm.uso) h += `<p class="tenue">Consultas al modelo hoy: ${llm.uso.llamadas}.</p>`;
+  $('analistas').innerHTML = h;
+}
+
+function pintarGrafica() {
+  const caja = $('grafica'), d = estado.curva, cap = estado.fondo.capital;
+  if (d.length < 2) { caja.innerHTML = '<p class="vacio">La curva aparece cuando la mesa lleva un rato en marcha.</p>'; return; }
+  const W = caja.clientWidth || 600, H = 240, m = {i: 8, d: 62, a: 10, b: 22};
+  const vals = d.map(p => p[1]), mn = Math.min(...vals, cap), mx = Math.max(...vals, cap), rango = (mx - mn) || 1;
+  const x = i => m.i + i / (d.length - 1) * (W - m.i - m.d), y = v => m.a + (1 - (v - mn) / rango) * (H - m.a - m.b);
+  const pts = d.map((p, i) => x(i).toFixed(1) + ',' + y(p[1]).toFixed(1)).join(' ');
+  caja.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Patrimonio del fondo, de ${num(vals[0])} a ${num(vals[vals.length - 1])} dólares">
+    <line class="eje" x1="${m.i}" x2="${W - m.d}" y1="${H - m.b}" y2="${H - m.b}"/>
+    <line class="base" x1="${m.i}" x2="${W - m.d}" y1="${y(cap)}" y2="${y(cap)}"/>
+    <text x="${W - m.d + 6}" y="${y(cap) + 4}">inicial</text>
+    <text x="${W - m.d + 6}" y="${Math.min(Math.max(y(vals[vals.length - 1]) + 4, 12), H - m.b - 2)}" style="fill:var(--tinta);font-weight:600">${num(vals[vals.length - 1], 0)}</text>
+    <text x="${m.i}" y="${H - 6}">${dia(d[0][0])}</text><text x="${W - m.d}" y="${H - 6}" text-anchor="end">${dia(d[d.length - 1][0])}</text>
+    <polyline class="linea" points="${pts}"/>
+    <line class="cursor" y1="${m.a}" y2="${H - m.b}" visibility="hidden"/><circle class="punto" r="4.5" visibility="hidden"/>
+    <rect x="${m.i}" y="0" width="${W - m.i - m.d}" height="${H}" fill="transparent"/></svg><div class="globo" hidden></div>`;
+  const svg = caja.querySelector('svg'), cur = svg.querySelector('.cursor'), pt = svg.querySelector('.punto'), globo = caja.querySelector('.globo');
+  svg.addEventListener('pointermove', ev => {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) / r.width * W;
+    const i = Math.max(0, Math.min(d.length - 1, Math.round((px - m.i) / (W - m.i - m.d) * (d.length - 1))));
+    cur.setAttribute('x1', x(i)); cur.setAttribute('x2', x(i)); pt.setAttribute('cx', x(i)); pt.setAttribute('cy', y(d[i][1]));
+    cur.setAttribute('visibility', 'visible'); pt.setAttribute('visibility', 'visible');
+    globo.hidden = false; globo.style.left = (x(i) / W * r.width) + 'px'; globo.style.top = (y(d[i][1]) / H * r.height) + 'px';
+    globo.textContent = diaHora(d[i][0]) + ': ' + num(d[i][1]) + ' $';
+  });
+  svg.addEventListener('pointerleave', () => { cur.setAttribute('visibility', 'hidden'); pt.setAttribute('visibility', 'hidden'); globo.hidden = true; });
+}
+
+function chispa(c) {
+  if (!c || c.length < 2) return '';
+  const mn = Math.min(...c), mx = Math.max(...c), r = (mx - mn) || 1;
+  return `<svg class="chispa" viewBox="0 0 84 22" aria-hidden="true"><polyline points="${c.map((v, i) => (i / (c.length - 1) * 84).toFixed(1) + ',' + (20 - (v - mn) / r * 18).toFixed(1)).join(' ')}"/></svg>`;
+}
+function posicion(p, pausa) { return pausa ? 'Modo seguro' : !p ? 'Fuera' : (p > 0 ? 'Largo ' : 'Corto ') + num(Math.abs(p), 2) + 'x'; }
+function tabla(filas, conCapital) {
+  return `<table><thead><tr><th>Estrategia</th><th>Días</th><th>Operaciones</th><th>Resultado</th><th>Caída máx.</th><th>Sharpe</th><th>Posición</th>${conCapital ? '<th>Capital</th>' : ''}<th>Evolución</th></tr></thead><tbody>` +
+    filas.map(e => e.dias === undefined
+      ? `<tr><td>${esc(e.nombre.replace(/_/g, ' '))}<span class="sub">${esc(e.simbolo)}, ${e.tf}</span></td><td colspan="${conCapital ? 8 : 7}" style="text-align:left;color:var(--tenue)">Esperando su primera vela</td></tr>`
+      : `<tr><td>${esc(e.apodo ? e.apodo + ', ' : '')}${esc(e.nombre.replace(/_/g, ' '))}<span class="sub">${esc(e.simbolo)}, ${e.tf}${e.publicado ? ', publicado' : ''}${e.sin_evidencia ? ', a prueba' : ''}</span></td><td>${num(e.dias, 0)}</td><td>${e.trades}</td>
+        <td class="${signo(e.retorno)}">${pct(e.retorno)}</td><td>${num(e.dd * 100, 1)} %</td><td>${num(e.sharpe, 2)}</td><td>${posicion(e.pos, e.pausa_hasta)}</td>
+        ${conCapital ? `<td>${num(e.capital, 0)} $</td>` : ''}<td>${chispa(e.curva)}</td></tr>`).join('') + '</tbody></table>';
+}
+function pintarLiga() {
+  const bots = estado.estrategias.filter(e => e.dias !== undefined).sort((a, b) => b.retorno - a.retorno);
+  if (!bots.length) { $('liga').innerHTML = '<p class="vacio">La liga empieza cuando los bots lleven su primera vela operando.</p>'; return; }
+  $('liga').innerHTML = '<table><thead><tr><th>Puesto</th><th style="text-align:left">Bot</th><th>Resultado</th><th>Días</th><th>Operaciones</th><th style="text-align:left">Situación</th></tr></thead><tbody>' +
+    bots.slice(0, 10).map((e, i) => `<tr><td>${i + 1}.º</td><td style="text-align:left">${esc(e.apodo || 'Bot')}<span class="sub">n.º ${e.id}, ${esc(e.nombre.replace(/_/g, ' '))} en ${esc(e.simbolo.split('/')[0])}</span></td>
+      <td class="${signo(e.retorno)}">${pct(e.retorno)}</td><td>${num(e.dias, 0)}</td><td>${e.trades}</td>
+      <td style="text-align:left">${e.pausa_hasta ? 'Modo seguro hasta ' + diaHora(e.pausa_hasta) : e.estado === 'aprobada' ? 'Con capital' : e.sin_evidencia ? 'Incubadora, a prueba' : 'Incubadora'}</td></tr>`).join('') +
+    '</tbody></table>' + (bots.length > 10 ? `<p class="vacio">Y ${bots.length - 10} más en las tablas de abajo.</p>` : '') +
+    '<p class="vacio">Con pocos días de rodaje el orden es casi todo suerte: lo que cuenta es quién sigue arriba tras semanas.</p>';
+}
+
+function pintarTablas() {
+  const orden = (a, b) => (b.retorno ?? -9) - (a.retorno ?? -9);
+  const fondo = estado.estrategias.filter(e => e.estado === 'aprobada').sort(orden), inc = estado.estrategias.filter(e => e.estado === 'incubadora').sort(orden);
+  $('t-fondo').textContent = 'Con capital (' + fondo.length + ')';
+  $('t-incubadora').textContent = 'Incubadora (' + inc.length + ')';
+  $('tabla-fondo').innerHTML = fondo.length ? tabla(fondo, true) : '<p class="vacio">Ninguna estrategia tiene capital todavía. El comité se lo asigna cuando superan la incubadora.</p>';
+  $('tabla-incubadora').innerHTML = inc.length ? tabla(inc, false) : '<p class="vacio">La incubadora está vacía. Se llena con lo que sobrevive a cada ronda de minería.</p>';
+}
+
+function pintarActividad() {
+  const origenes = ['Todo', ...new Set(estado.eventos.map(e => e.origen))];
+  if (!origenes.includes(filtro)) filtro = 'Todo';
+  $('filtros').innerHTML = origenes.map(o => `<button class="filtro" aria-pressed="${o === filtro}" data-o="${esc(o)}">${esc(o)}</button>`).join('');
+  const lista = estado.eventos.filter(e => filtro === 'Todo' || e.origen === filtro).reverse();
+  $('sucesos').innerHTML = lista.length ? lista.map(e => `<li><div class="quien"><b>${esc(e.origen)}</b><span>${diaHora(e.ts)}</span></div>${esc(e.mensaje)}</li>`).join('')
+    : '<li class="vacio">Aún no ha pasado nada. Aquí aparece cada orden, cada decisión de Riesgos y cada acta del comité.</li>';
+}
+$('filtros').addEventListener('click', ev => { if (ev.target.dataset.o) { filtro = ev.target.dataset.o; pintarActividad(); } });
+
+
+/* ------------------------------------------------------------------ sala isométrica
+   Nada aquí es decorado: los bots son las estrategias de /api/estado, las pantallas son su posición,
+   los bocadillos son eventos reales y el laboratorio solo se mueve mientras hay una minería en curso. */
+const Sala = (() => {
+  const TW = 56, TH = 28, GY = 18.5, OX = GY * TW / 2 + 16, OY = 92;
+  let GX = 24.5;                                   // crece (29.2, 34.1, 39) cuando hay departamentos nuevos en marcha
+  const ancho = () => (GX + GY) * TW / 2 + 32, alto = () => (GX + GY) * TH / 2 + OY + 24;
+  const lienzo = $('lienzo'), ctx = lienzo.getContext('2d'), marco = $('sala');
+  const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const NOMBRES = ['Lucía','Mateo','Vera','Hugo','Nora','Izan','Alba','Leo','Carla','Bruno','Irene','Unai','Elsa','Marc','Olaia','Dario','Aitana','Pol','Jimena','Enzo','Laia','Iker','Vega','Saúl','Noa','Biel','Candela','Jon','Ainhoa','Teo','Mara','Aleix','Lola','Guille','Nerea','Roc','Daniela','Asier','Clara','Joel'];
+  // departamentos de apoyo: una tercera columna que aparece cuando empiezan a trabajar
+  const APOYO = [['inv', 'Investigación'], ['mac', 'Macro'], ['dat', 'Datos'], ['eje', 'Ejecución'], ['ope', 'Operaciones']];
+  const HACE = {
+    inv: 'Trae modelos con reglas ya publicadas y replicadas por otros, sin afinar nada. Los compara con comprar y mantener y con el ruido, y contrata a los que lo merecen.',
+    mac: 'Lee cada día el estado del mercado: tendencia de BTC, cuántas monedas acompañan, volatilidad y funding. Informa a la casa; no toca ninguna orden.',
+    dat: 'Tras cada descarga comprueba que el histórico está al día, sin huecos y sin velas imposibles. Con datos malos, todo lo que sale del laboratorio es malo.',
+    eje: 'Mide en cada ciclo la horquilla real de cada moneda y la compara con el deslizamiento supuesto. A la moneda que sale más cara, la mesa le cobra lo medido.',
+    ope: 'Cuadre diario: que la posición de cada cuenta coincide con su última orden, que nadie pasa de su apalancamiento y que los límites del fondo se cumplen.',
+  };
+  const ZONAS = [
+    {id: 'mesa', nombre: 'Mesa de trading', x: 1, y: 1, w: 14.2, h: 6.3, c: '--z-mesa'},
+    {id: 'inc', nombre: 'Incubadora', x: 1, y: 8, w: 14.2, h: 10, c: '--z-inc'},
+    {id: 'rie', nombre: 'Riesgos', x: 16, y: 1, w: 8, h: 4.6, c: '--z-rie'},
+    {id: 'com', nombre: 'Comité', x: 16, y: 6.3, w: 8, h: 5.2, c: '--z-com'},
+    {id: 'lab', nombre: 'Laboratorio', x: 16, y: 12.2, w: 8, h: 5.8, c: '--z-lab'},
+    {id: 'aud', nombre: 'Auditoría', x: 24.7, y: 1, w: 4.2, h: 4.6, c: '--z-aud', origen: 'Auditoría'},
+    {id: 'sel', nombre: 'Selección', x: 24.7, y: 12.2, w: 4.2, h: 5.8, c: '--z-sel', origen: 'Selección'},
+    {id: 'car', nombre: 'Cartera', x: 24.7, y: 6.3, w: 4.2, h: 5.2, c: '--z-car', origen: 'Cartera'},
+    ...APOYO.map(([id, nombre], i) => ({id, nombre, x: 29.6, y: 1 + i * 3.475, w: 4.2, h: 3.1, c: '--z-' + id, origen: nombre, px: 13})),
+    {id: 'not', nombre: 'Noticias', x: 34.5, y: 1, w: 4.2, h: 3.1, c: '--z-not', origen: 'Noticias', px: 13},
+    {id: 'sen', nombre: 'Sentimiento', x: 34.5, y: 4.475, w: 4.2, h: 3.1, c: '--z-sen', origen: 'Sentimiento', px: 13},
+    {id: 'ana', nombre: 'Debate', x: 34.5, y: 7.95, w: 4.2, h: 6.575, c: '--z-ana', origen: 'Moderador', px: 13},
+  ];
+  const huecos = (x0, y0, cols, filas) => { const o = []; for (let f = 0; f < filas; f++) for (let c = 0; c < cols; c++) o.push([x0 + c * 2, y0 + f * 2]); return o; };
+  const H = {aprobada: huecos(1.5, 1.4, 7, 3), incubadora: huecos(1.5, 8.4, 7, 5)};
+  const ASIENTOS = [[17.4, 7.5], [18.6, 7.5], [19.8, 7.5], [21, 7.5], [17.4, 10.4], [18.6, 10.4], [19.8, 10.4], [21, 10.4]];
+  const PUERTA_LAB = [16.6, 14.8], SALIDA = [0.4, 7.4];
+  const PERSONAL = {
+    rie: {x: 19.6, y: 3.9, nombre: 'Riesgos', c: '--b-rie', origenes: ['Riesgos'], hace: 'Revisa cada orden del fondo antes de que salga y vigila la pérdida del día y la caída desde máximos. Es código fijo: nadie se lo puede saltar.'},
+    com: {x: 22.6, y: 8.9, nombre: 'Comité', c: '--b-com', origenes: ['Comité', 'Dirección'], hace: 'Una vez al día decide quién sale de la incubadora, a quién se le quita el capital, a quién se descarta y cómo se reparte el dinero.'},
+    lab: {x: 18.3, y: 16.3, nombre: 'Laboratorio', c: '--b-lab', origenes: ['Laboratorio'], hace: 'Mina estrategias nuevas con los datos más recientes y solo deja pasar las que superan el embudo y el control de ruido.'},
+    lab2: {x: 21.1, y: 16.3, nombre: 'Laboratorio', c: '--b-lab', origenes: [], hace: 'Mina estrategias nuevas con los datos más recientes y solo deja pasar las que superan el embudo y el control de ruido.'},
+    aud: {x: 26.9, y: 3.9, nombre: 'Auditoría', c: '--b-aud', origenes: ['Auditoría'], zona: 'Auditoría', hace: 'Cada día compara lo que hace cada bot en vivo con lo que cabía esperar de él. Si rinde peor de lo que explica la mala suerte, propone despedirlo; si no se parece a su simulación, avisa.'},
+    sel: {x: 26.9, y: 16.3, nombre: 'Selección', c: '--b-sel', origenes: ['Selección'], zona: 'Selección', hace: 'Vigila cuántos bots hay en plantilla. Si faltan, pide al laboratorio otra búsqueda, y anota qué tipos de estrategia acaban funcionando para buscar más por ahí.'},
+  };
+  PERSONAL.car = {x: 26.9, y: 9.3, nombre: 'Cartera', c: '--b-car', origenes: ['Cartera'], zona: 'Cartera', hace: 'Agrupa los bots por apuesta: muchos bots pueden ser la misma idea. Pone un tope de capital por apuesta y mide a cuántas apuestas independientes equivale la plantilla.'};
+  APOYO.forEach(([id, nombre], i) => { PERSONAL[id] = {x: 31.8, y: 2.7 + i * 3.475, nombre, c: '--b-' + id, origenes: [nombre], zona: nombre, hace: HACE[id]}; });
+  PERSONAL.not = {x: 36.7, y: 2.7, nombre: 'Noticias', c: '--b-not', origenes: ['Noticias'], zona: 'Noticias', hace: 'Lee los titulares de las últimas 24 horas de varios medios. Sin modelo de lenguaje los clasifica por palabras clave; con modelo, los resume y avisa de los graves. Informa; no decide.'};
+  PERSONAL.sen = {x: 36.7, y: 6.175, nombre: 'Sentimiento', c: '--b-sen', origenes: ['Sentimiento'], zona: 'Sentimiento', hace: 'Sigue el índice de miedo y codicia del mercado cripto y avisa cuando cambia de zona. Informa; no decide.'};
+  PERSONAL.alc = {x: 35.6, y: 10.4, nombre: 'Analista alcista', c: '--b-alc', origenes: ['Analista alcista'], zona: 'Moderador', hace: 'Cada día defiende, con la misma hoja de datos que su compañero, el mejor argumento para estar más invertido. Lo escribe un modelo de lenguaje: es opinión y no decide nada.'};
+  PERSONAL.baj = {x: 37.6, y: 10.4, nombre: 'Analista bajista', c: '--b-baj', origenes: ['Analista bajista'], zona: 'Moderador', hace: 'Cada día defiende, con la misma hoja de datos que su compañero, el mejor argumento para ser prudente. Lo escribe un modelo de lenguaje: es opinión y no decide nada.'};
+  PERSONAL.mod = {x: 36.6, y: 12.6, nombre: 'Moderador', c: '--b-mod', origenes: ['Moderador'], zona: 'Moderador', hace: 'Escucha a los dos analistas y resume en qué coinciden, en qué discrepan y qué mirar mañana. Lo escribe un modelo de lenguaje: es opinión y no decide nada.'};
+  const MESAS_APOYO = [[26.3, 2.9, 'Auditoría'], [26.3, 15.3, 'Selección'], [26.3, 8.3, 'Cartera'], ...APOYO.map(([, nombre], i) => [31.2, 1.7 + i * 3.475, nombre]), [36.1, 1.7, 'Noticias'], [36.1, 5.175, 'Sentimiento'], [36, 11.3, 'Moderador']];
+  let activos = new Set();                          // departamentos que ya han hecho algo: los nuevos aparecen cuando empiezan a trabajar
+  const visible = x => !(x.zona || x.origen) || activos.has(x.zona || x.origen);
+  const personal = () => Object.values(PERSONAL).filter(visible);
+  for (const k in PERSONAL) Object.assign(PERSONAL[k], {tipo: 'personal', clave: k, fase: Math.random() * 6});
+
+  let escala = 1, col = {}, tonosMemo = {}, bots = new Map(), e = null, sel = null, encima = null, cola = [], globos = [], vistoEv = null, reunion = 0, ultimo = performance.now(), rotulo = null, primera = true;
+
+  const iso = (x, y, z = 0) => [OX + (x - y) * TW / 2, OY + (x + y) * TH / 2 - z * TH];
+  function leerColores() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of ['--s-suelo', '--s-linea', '--s-pared', '--z-mesa', '--z-inc', '--z-rie', '--z-com', '--z-lab', '--z-aud', '--z-sel', '--b-aud', '--b-sel', '--z-car', '--z-inv', '--z-mac', '--z-dat', '--z-eje', '--z-ope', '--b-car', '--b-inv', '--b-mac', '--b-dat', '--b-eje', '--b-ope', '--z-not', '--z-sen', '--z-ana', '--b-not', '--b-sen', '--b-alc', '--b-baj', '--b-mod', '--s-mueble', '--s-maquina', '--b-fondo', '--b-inc', '--b-rie', '--b-com', '--b-lab',
+                     '--s-apagada', '--gana', '--pierde', '--laton', '--aviso', '--tinta', '--tenue', '--panel', '--pista']) col[k] = cs.getPropertyValue(k).trim();
+    tonosMemo = {};
+  }
+  function tonos(hex) {
+    if (tonosMemo[hex]) return tonosMemo[hex];
+    const n = parseInt(hex.slice(1), 16), f = k => '#' + [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.round(v * k).toString(16).padStart(2, '0')).join('');
+    return tonosMemo[hex] = [hex, f(0.8), f(0.62)];
+  }
+  function poli(pts, relleno, borde) {
+    ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath();
+    if (relleno) { ctx.fillStyle = relleno; ctx.fill(); }
+    if (borde) { ctx.strokeStyle = borde; ctx.lineWidth = 1; ctx.stroke(); }
+  }
+  function caja(x, y, w, d, h, z, hex) {
+    const t = tonos(hex), A = iso(x, y, z + h), B = iso(x + w, y, z + h), C = iso(x + w, y + d, z + h), D = iso(x, y + d, z + h), C0 = iso(x + w, y + d, z), D0 = iso(x, y + d, z), B0 = iso(x + w, y, z);
+    poli([A, B, C, D], t[0]); poli([D, C, C0, D0], t[1]); poli([B, C, C0, B0], t[2]);
+  }
+  // rectángulo sobre la cara frontal (la que mira hacia +y) de una caja: u a lo ancho, v en altura
+  const frente = (x, y, w, d, z, u0, u1, v0, v1) => [iso(x + u0 * w, y + d, z + v1), iso(x + u1 * w, y + d, z + v1), iso(x + u1 * w, y + d, z + v0), iso(x + u0 * w, y + d, z + v0)];
+  function textoSuelo(txt, x, y, color, px = 15) {
+    const [sx, sy] = iso(x, y); ctx.save(); ctx.translate(sx, sy); ctx.transform(1, 0.5, -1, 0.5, 0, 0);
+    ctx.font = `600 ${px}px Archivo, system-ui, sans-serif`; ctx.fillStyle = color; ctx.globalAlpha = 0.75; ctx.fillText(txt, 0, 0); ctx.restore();
+  }
+  function textoPared(txt, x, z, color, px = 15, peso = 600) {
+    const [sx, sy] = iso(x, 0, z); ctx.save(); ctx.translate(sx, sy); ctx.transform(1, 0.5, 0, 1, 0, 0);
+    ctx.font = `${peso} ${px}px Archivo, system-ui, sans-serif`; ctx.fillStyle = color; ctx.fillText(txt, 0, 0); ctx.restore();
+  }
+
+  function escritorio(x, y, pos, vivo, t) {
+    caja(x, y, 1.2, 0.6, 0.34, 0, col['--s-mueble']);
+    caja(x + 0.3, y + 0.12, 0.6, 0.08, 0.34, 0.34, col['--s-maquina']);
+    if (pos === undefined) return;
+    const c = !vivo || !pos ? col['--s-apagada'] : pos > 0 ? col['--gana'] : col['--pierde'];
+    poli(frente(x + 0.3, y + 0.12, 0.6, 0.08, 0.34, 0.1, 0.9, 0.12, 0.88), c);
+    if (vivo && pos) {   // flecha: la posición no depende solo del color
+      const m = frente(x + 0.3, y + 0.12, 0.6, 0.08, 0.34, 0.32, 0.68, 0.25, 0.75), cx = (m[0][0] + m[1][0]) / 2, a = (m[0][1] + m[1][1]) / 2, b = (m[2][1] + m[3][1]) / 2;
+      poli(pos > 0 ? [[cx, a], [m[2][0], b], [m[3][0], b]] : [[m[0][0], a], [m[1][0], a], [cx, b]], col['--panel']);
+    }
+  }
+  function bot(b, t) {
+    const activo = b.tipo === 'personal' ? (b.clave.startsWith('lab') || b.clave === 'sel' ? !!(e && e.aprendizaje.en_curso) : false) : !!(b.d && b.d.pos) && !b.parado;
+    const salto = quieto ? 0 : (b.andando ? Math.abs(Math.sin(t / 110 + b.fase)) * 0.09 : activo ? Math.sin(t / 260 + b.fase) * 0.035 + 0.035 : 0);
+    const hex = col[b.c] || col['--b-inc'], [sx, sy] = iso(b.x, b.y);
+    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(sx, sy, 13, 6.5, 0, 0, 7); ctx.fill();
+    if (b === sel || b === encima) { ctx.strokeStyle = col['--laton']; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(sx, sy, 17, 8.5, 0, 0, 7); ctx.stroke(); }
+    ctx.globalAlpha = b.parado ? 0.55 : 1;
+    caja(b.x - 0.19, b.y - 0.19, 0.38, 0.38, 0.46, salto, hex);
+    caja(b.x - 0.15, b.y - 0.15, 0.3, 0.3, 0.27, 0.5 + salto, tonos(hex)[0]);
+    poli(frente(b.x - 0.15, b.y - 0.15, 0.3, 0.3, 0.5 + salto, 0.15, 0.85, 0.1, 0.19), col['--tinta']);
+    const [ax, ay] = iso(b.x, b.y, 0.77 + salto); ctx.strokeStyle = tonos(hex)[2]; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax, ay - 7); ctx.stroke();
+    ctx.fillStyle = activo ? col['--laton'] : tonos(hex)[2]; ctx.beginPath(); ctx.arc(ax, ay - 8, 2.3, 0, 7); ctx.fill();
+    if (b.lider) {                       // el primero de la liga lleva una estrella
+      ctx.fillStyle = col['--laton']; ctx.beginPath();
+      for (let i = 0; i < 10; i++) { const r = i % 2 ? 3 : 7, a = -Math.PI / 2 + i * Math.PI / 5; ctx.lineTo(ax + r * Math.cos(a), ay - 20 + r * Math.sin(a)); }
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function pintar(t) {
+    const dpr = devicePixelRatio || 1;
+    ctx.setTransform(escala * dpr, 0, 0, escala * dpr, 0, 0);
+    ctx.clearRect(0, 0, ancho(), alto());
+    const parado = !!(e && e.riesgos.kill), minando = !!(e && e.aprendizaje.en_curso), HP = 2;
+    // paredes del fondo y suelo
+    poli([iso(0, 0), iso(GX, 0), iso(GX, 0, HP), iso(0, 0, HP)], col['--s-pared']);
+    poli([iso(0, 0), iso(0, GY), iso(0, GY, HP), iso(0, 0, HP)], tonos(col['--s-pared'])[1]);
+    poli([iso(0, 0), iso(GX, 0), iso(GX, GY), iso(0, GY)], col['--s-suelo']);
+    for (const z of ZONAS.filter(visible)) {
+      poli([iso(z.x, z.y), iso(z.x + z.w, z.y), iso(z.x + z.w, z.y + z.h), iso(z.x, z.y + z.h)], col[z.c], col['--s-linea']);
+      textoSuelo(z.nombre, z.x + 0.25, z.y + z.h - (z.id === 'com' ? 0.75 : 0.2), col['--tinta'], z.px || 15);
+    }
+    if (parado) { const z = ZONAS[0]; ctx.globalAlpha = 0.22; poli([iso(z.x, z.y), iso(z.x + z.w, z.y), iso(z.x + z.w, z.y + z.h), iso(z.x, z.y + z.h)], col['--pierde']); ctx.globalAlpha = 1; }
+    // pared: marcador del fondo y consumo de límites
+    if (e) {
+      textoPared('Patrimonio', 1.2, 1.55, col['--tenue'], 12, 500);
+      textoPared(num(e.fondo.equity) + ' $', 1.2, 0.85, col['--tinta'], 22, 700);
+      textoPared(parado ? 'Parado' : 'Hoy ' + pct(e.fondo.hoy), 8.2, 0.85, parado ? col['--pierde'] : e.fondo.hoy < 0 ? col['--pierde'] : e.fondo.hoy > 0 ? col['--gana'] : col['--tenue'], 18, 600);
+      textoPared('Límites usados', 16.3, 1.55, col['--tenue'], 12, 500);
+      e.riesgos.limites.forEach((l, i) => {
+        const x0 = 16.3 + i * 1.85, uso = Math.min(l.uso / l.max, 1);
+        poli([iso(x0, 0, 1.15), iso(x0 + 1.5, 0, 1.15), iso(x0 + 1.5, 0, 0.95), iso(x0, 0, 0.95)], col['--pista']);
+        if (uso > 0.005) poli([iso(x0, 0, 1.15), iso(x0 + 1.5 * uso, 0, 1.15), iso(x0 + 1.5 * uso, 0, 0.95), iso(x0, 0, 0.95)], uso >= 1 ? col['--pierde'] : uso >= 0.8 ? col['--aviso'] : col['--laton']);
+        textoPared(['Día', 'Caída', 'Bruta', 'Neta'][i], x0, 0.5, col['--tenue'], 10, 500);
+      });
+    }
+    // objetos, de atrás hacia delante
+    const obj = [];
+    for (const estado of ['aprobada', 'incubadora']) H[estado].forEach((h, i) => {
+      const b = [...bots.values()].find(v => v.estado === estado && v.hueco === i && !v.saliendo);
+      const sentado = b && Math.abs(b.x - b.cx) < 0.05 && Math.abs(b.y - b.cy) < 0.05;
+      obj.push({k: h[0] + h[1] + 0.9, f: () => escritorio(h[0], h[1], b ? (sentado ? b.d.pos : 0) : undefined, sentado && !b.parado, t)});
+    });
+    obj.push({k: 17.2 + 2.5 + 2.2, f: () => { caja(17.4, 2.5, 4.4, 0.7, 0.36, 0, col['--s-mueble']);
+      for (let i = 0; i < 3; i++) { caja(17.7 + i * 1.4, 2.6, 0.9, 0.08, 0.42, 0.36, col['--s-maquina']); poli(frente(17.7 + i * 1.4, 2.6, 0.9, 0.08, 0.36, 0.08, 0.92, 0.1, 0.9), parado ? col['--pierde'] : col['--laton']); } }});
+    obj.push({k: 17 + 8.3 + 2.9, f: () => caja(17, 8.3, 4.6, 1.3, 0.32, 0, col['--s-mueble'])});
+    for (let i = 0; i < 4; i++) obj.push({k: 16.7 + i * 1.75 + 13 + 0.8, f: () => {
+      const x = 16.7 + i * 1.75; caja(x, 13, 1, 0.7, 1.15, 0, col['--s-maquina']);
+      for (let j = 0; j < 5; j++) { const on = minando && (quieto || Math.sin(t / 170 + i * 2.1 + j * 1.3) > -0.2); poli(frente(x, 13, 1, 0.7, 0, 0.18, 0.82, 0.16 + j * 0.19, 0.24 + j * 0.19), on ? col['--b-lab'] : col['--s-apagada']); }
+    }});
+    for (const x of [17.7, 20.5]) obj.push({k: x + 15.3 + 0.9, f: () => escritorio(x, 15.3, minando ? 1 : 0, false, t)});
+    for (const [x, y, zona] of MESAS_APOYO) if (activos.has(zona)) obj.push({k: x + y + 0.9, f: () => escritorio(x, y, 1, false, t)});
+    for (const b of [...bots.values(), ...personal()]) obj.push({k: b.x + b.y, f: () => bot(b, t)});
+    obj.sort((a, b) => a.k - b.k).forEach(o => o.f());
+    if (minando) textoSuelo('minando ahora', 20.3, 17.8, col['--b-lab'], 13);
+  }
+
+  const pantalla = b => { const [x, y] = iso(b.x, b.y, 1.05); return [x * escala + lienzo.offsetLeft, y * escala + lienzo.offsetTop]; };
+  function mover(dt) {
+    const ahora = performance.now(), reunidos = ahora < reunion;
+    let n = 0;
+    for (const b of bots.values()) {
+      let dest = b.saliendo ? SALIDA : [b.cx, b.cy];
+      if (reunidos && b.estado === 'aprobada' && !b.saliendo && n < ASIENTOS.length) dest = ASIENTOS[n++];
+      const dx = dest[0] - b.x, dy = dest[1] - b.y, dist = Math.hypot(dx, dy), paso = 4.5 * dt;
+      b.andando = dist > 0.03;
+      if (quieto || dist <= paso) { b.x = dest[0]; b.y = dest[1]; if (b.saliendo) bots.delete(b.id); } else { b.x += dx / dist * paso; b.y += dy / dist * paso; }
+    }
+    while (cola.length && globos.length < 2) {
+      const ev = cola[0], id = +(/#(\d+)/.exec(ev.mensaje) || [])[1];
+      const quien = (ev.origen === 'Mesa' || ev.origen === 'Incubadora') ? bots.get(id) : personal().find(p => p.origenes.includes(ev.origen));
+      if (quien && globos.some(g => Math.hypot(g.quien.x - quien.x, g.quien.y - quien.y) < 5)) break;      // espera a que haya hueco
+      cola.shift();
+      if (!quien) continue;
+      const el = document.createElement('div'); el.className = 'bocadillo';
+      const txt = quien.tipo === 'personal' ? ev.mensaje : ev.mensaje.replace(/^#\d+ \S+ \S+ \S+: /, '');
+      el.innerHTML = `<b>${esc(quien.nombre)}</b>${esc(txt.length > 130 ? txt.slice(0, 127) + '…' : txt)}`;
+      marco.appendChild(el); globos.push({quien, el, hasta: ahora + 9000});
+    }
+    globos = globos.filter(g => { if (ahora > g.hasta || (g.quien.tipo !== 'personal' && !bots.has(g.quien.id))) { g.el.remove(); return false; }
+      const [x, y] = pantalla(g.quien); g.el.style.left = Math.max(120, Math.min(marco.clientWidth - 120, x)) + 'px'; g.el.style.top = (y - 6) + 'px'; return true; });
+    if (rotulo) { if (encima && !globos.some(g => g.quien === encima)) { const [x, y] = pantalla(encima); rotulo.style.left = x + 'px'; rotulo.style.top = (y - 4) + 'px'; rotulo.hidden = false; } else rotulo.hidden = true; }
+  }
+  let oculta = false;                               // con la oficina 3D a la vista, el plano no pinta ni saca bocadillos
+  function cuadro(t) {
+    const dt = Math.min(0.1, (t - ultimo) / 1000); ultimo = t;
+    if (!oculta) { mover(dt); pintar(t); }
+    requestAnimationFrame(cuadro);
+  }
+  function ocultar(si) { oculta = si; if (si) { globos.forEach(g => g.el.remove()); globos = []; if (rotulo) rotulo.hidden = true; } else ajustar(); if (e) actualizar(e); }
+  function seleccionar(s) {
+    sel = !s ? null : s.tipo === 'personal' ? PERSONAL[s.clave] : (bots.get(s.id) || {tipo: 'bot', id: s.id});
+    ficha();
+  }
+  function ajustar() {
+    const dpr = devicePixelRatio || 1;
+    escala = Math.min(1.12, marco.clientWidth / ancho());
+    lienzo.style.width = ancho() * escala + 'px'; lienzo.style.height = alto() * escala + 'px';
+    lienzo.width = Math.round(ancho() * escala * dpr); lienzo.height = Math.round(alto() * escala * dpr);
+  }
+  function cerca(ev) {
+    const r = lienzo.getBoundingClientRect(), x = (ev.clientX - r.left) / escala, y = (ev.clientY - r.top) / escala;
+    let mejor = null, d = 26;
+    for (const b of [...bots.values(), ...personal()]) { const [bx, by] = iso(b.x, b.y, 0.4), k = Math.hypot(bx - x, by - y); if (k < d) { d = k; mejor = b; } }
+    return mejor;
+  }
+
+  function ficha() {
+    const caja = $('ficha');
+    if (!e) { caja.innerHTML = ''; return; }
+    if (sel && sel.tipo !== 'personal') { const d = e.estrategias.find(x => x.id === sel.id); if (d) { sel.d = d; sel.nombre = sel.nombre || d.apodo; } else sel = null; }
+    if (!sel) {
+      const a = e.estrategias.filter(x => x.estado === 'aprobada').length, i = e.estrategias.length - a;
+      caja.innerHTML = `<h3>Quién es quién</h3><p class="papel">Toca a alguien para ver qué está haciendo.</p>
+        <dl><dt>Bots con capital</dt><dd>${a}</dd><dt>Bots en incubadora</dt><dd>${i}</dd><dt>Descartados hasta hoy</dt><dd>${e.descartadas}</dd></dl>
+        <p class="papel">${e.aprendizaje.en_curso ? 'El laboratorio está minando: los bots nuevos saldrán de ahí hacia la incubadora cuando termine la ronda.' : a + i ? 'Cada bot es una estrategia. Su pantalla enseña la posición que tiene abierta ahora mismo.' : 'La sala está vacía hasta que el laboratorio encuentre estrategias que superen los filtros.'}</p>`;
+      return;
+    }
+    if (sel.tipo === 'personal') {
+      const evs = e.eventos.filter(x => sel.origenes.includes(x.origen)).slice(-4).reverse();
+      caja.innerHTML = `<h3>${esc(sel.nombre)}</h3><p class="papel">Departamento</p><p>${esc(sel.hace)}</p>
+        <ul>${evs.length ? evs.map(x => `<li><span>${diaHora(x.ts)}</span>${esc(x.mensaje)}</li>`).join('') : '<li>Aún no ha tenido que intervenir.</li>'}</ul>`;
+      return;
+    }
+    const d = sel.d, evs = e.eventos.filter(x => new RegExp('#' + d.id + '\\b').test(x.mensaje)).slice(-3).reverse();
+    caja.innerHTML = `<h3>${esc(sel.nombre)}</h3><p class="papel">${d.estado === 'aprobada' ? 'Trader con capital' : 'Trader en incubadora'}, estrategia n.º ${d.id}</p>
+      ${d.pausa_hasta ? `<p style="color:var(--aviso)">En modo seguro hasta ${diaHora(d.pausa_hasta)}: encadenó más pérdidas que nunca en su histórico.</p>` : ''}
+      ${d.publicado ? `<p class="papel">Modelo publicado: ${esc(d.fuente || '')}.</p>` : ''}
+      ${d.sin_evidencia ? `<p style="color:var(--aviso)">A prueba: ${d.publicado ? 'con nuestro histórico no se distingue de la suerte' : 'la minería no la distinguió de la suerte'}.</p>` : ''}
+      ${d.cartera ? `<p class="papel">Forma parte de la cartera ${esc(d.cartera.replace(/_/g, ' '))}: mismos parámetros en todas sus monedas.</p>` : ''}
+      ${d.auditoria ? `<p class="papel">Auditoría: ${{en_linea: 'dentro de lo esperado', decaimiento: 'por debajo de lo que explica la mala suerte', desvio: 'no coincide con su simulación'}[d.auditoria.estado]}; su resultado en vivo supera al ${num(d.auditoria.percentil * 100, 0)} % de los tramos de su histórico.</p>` : ''}
+      <p>${esc(d.nombre.replace(/_/g, ' '))} en ${esc(d.simbolo)}, velas de ${d.tf}</p>` +
+      (d.dias === undefined ? '<p class="papel">Esperando su primera vela.</p>' : `${chispa(d.curva)}<dl>
+        <dt>Posición</dt><dd>${posicion(d.pos, d.pausa_hasta)}</dd><dt>Resultado</dt><dd class="${signo(d.retorno)}">${pct(d.retorno)}</dd>
+        <dt>Días</dt><dd>${num(d.dias, 0)}</dd><dt>Operaciones</dt><dd>${d.trades}</dd><dt>Sharpe</dt><dd>${num(d.sharpe, 2)}</dd>
+        <dt>Caída máxima</dt><dd>${num(d.dd * 100, 1)} %</dd>${d.capital != null ? `<dt>Capital</dt><dd>${num(d.capital, 0)} $</dd>` : ''}</dl>`) +
+      `<p class="papel">Parámetros: ${esc(Object.entries(d.params).map(([k, v]) => k + ' ' + v).join(', '))}</p>
+      <ul>${evs.map(x => `<li><span>${diaHora(x.ts)}</span>${esc(x.mensaje.replace(/^#\d+ \S+ \S+ \S+: /, ''))}</li>`).join('')}</ul>`;
+  }
+
+  function actualizar(estado) {
+    e = estado;
+    const antes = GX;
+    activos = new Set(e.departamentos || e.eventos.map(x => x.origen));
+    GX = ['Noticias', 'Sentimiento', 'Moderador'].some(n => activos.has(n)) ? 39 : APOYO.some(([, n]) => activos.has(n)) ? 34.1 : ['Auditoría', 'Selección', 'Cartera'].some(n => activos.has(n)) ? 29.2 : 24.5;
+    if (GX !== antes) ajustar();
+    const vivos = new Set(), cuenta = {aprobada: 0, incubadora: 0};
+    for (const d of [...e.estrategias].sort((a, b) => a.id - b.id)) {
+      const i = cuenta[d.estado]++;
+      if (i >= H[d.estado].length) continue;              // sin sitio en pantalla: sigue en las tablas
+      const h = H[d.estado][i];
+      let b = bots.get(d.id);
+      if (!b) {
+        b = {id: d.id, tipo: 'bot', nombre: d.apodo || NOMBRES[d.id % NOMBRES.length], fase: (d.id * 1.7) % 6, x: primera ? h[0] + 0.6 : PUERTA_LAB[0], y: primera ? h[1] + 1.05 : PUERTA_LAB[1]};
+        bots.set(d.id, b);
+      }
+      Object.assign(b, {d, estado: d.estado, hueco: i, cx: h[0] + 0.6, cy: h[1] + 1.05, c: d.estado === 'aprobada' ? '--b-fondo' : '--b-inc', saliendo: false,
+                        parado: (e.riesgos.kill && d.estado === 'aprobada') || !!d.pausa_hasta, lider: false});
+      vivos.add(d.id);
+    }
+    for (const b of bots.values()) if (!vivos.has(b.id)) b.saliendo = true;
+    const primero = [...bots.values()].filter(b => !b.saliendo && b.d.dias !== undefined && b.d.trades > 0 && b.d.retorno > 0).sort((a, b) => b.d.retorno - a.d.retorno)[0];
+    if (primero) primero.lider = true;
+    const ultimoId = e.eventos.length ? e.eventos[e.eventos.length - 1].id : 0;
+    if (vistoEv === null) vistoEv = Math.max(0, ultimoId - 2);
+    const nuevos = e.eventos.filter(x => x.id > vistoEv);
+    if (nuevos.some(x => x.tipo === 'acta')) reunion = performance.now() + 9000;
+    cola.push(...nuevos); if (cola.length > 6) cola = cola.slice(-6);
+    vistoEv = ultimoId; primera = false;
+    const fuera = Math.max(0, cuenta.aprobada - H.aprobada.length) + Math.max(0, cuenta.incubadora - H.incubadora.length);
+    $('reunir').hidden = !(e.capacidades || []).includes('comite');
+    $('sala-resumen').textContent = (e.aprendizaje.en_curso ? 'El laboratorio está minando. ' : '') + `${cuenta.aprobada} con capital, ${cuenta.incubadora} en incubadora` + (fuera && !oculta ? ` (${fuera} sin sitio en el plano, están en las tablas)` : '')
+      + (e.plantilla ? `. Plantilla: ${e.plantilla.hay} de ${e.plantilla.objetivo} bots` : '') + '.';
+    ficha();
+  }
+
+  leerColores(); ajustar();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', leerColores);
+  new ResizeObserver(ajustar).observe(marco);
+  rotulo = document.createElement('div'); rotulo.className = 'rotulo'; rotulo.hidden = true; marco.appendChild(rotulo);
+  lienzo.addEventListener('pointermove', ev => { encima = cerca(ev); if (encima) rotulo.textContent = encima.nombre + (encima.tipo === 'personal' ? '' : ', n.º ' + encima.id); });
+  lienzo.addEventListener('pointerleave', () => { encima = null; });
+  lienzo.addEventListener('click', ev => { sel = cerca(ev); ficha(); });
+  requestAnimationFrame(cuadro);
+  $('reunir').addEventListener('click', async () => {
+    const b = $('reunir'); b.disabled = true; reunion = performance.now() + 9000;
+    try {
+      const r = await (await fetch('/api/comite', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Fondo': '1'}, body: '{}'})).json();
+      if (r.resumen) cola.push({origen: 'Comité', mensaje: r.resumen});
+    } catch (err) {}
+    b.disabled = false; cargar();
+  });
+  // posiciones en pantalla (píxeles de la página) de cada bot: lo usan las pruebas automáticas
+  const posiciones = () => [...bots.values(), ...personal()].map(b => { const r = lienzo.getBoundingClientRect(), [x, y] = iso(b.x, b.y, 0.4); return {nombre: b.nombre, id: b.id || b.clave, x: r.left + x * escala, y: r.top + y * escala}; });
+  return {actualizar, posiciones, seleccionar, ocultar, PERSONAL};
+})();
+
+/* ------------------------------------------------------------------ oficina 3D
+   Se monta cuando carga /static/oficina.js y el navegador tiene WebGL. Si algo falla, se queda el plano. */
+let Oficina = null;
+function ponerVista(v) {
+  try { localStorage.setItem('fondo-vista', v); } catch (err) {}
+  $('oficina').hidden = v !== '3d'; $('sala').hidden = v === '3d';
+  document.querySelectorAll('#conmutador button').forEach(b => b.setAttribute('aria-pressed', b.dataset.vista === v));
+  Sala.ocultar(v === '3d');
+  if (Oficina && v !== '3d') Oficina.limpiar();
+}
+window.__montarOficina = crear => {
+  try {
+    $('oficina').hidden = false;
+    Oficina = crear($('oficina'), {num, pct, personal: Sala.PERSONAL, alSeleccionar: s => Sala.seleccionar(s)});
+  } catch (err) { $('oficina').hidden = true; console.warn('Sin 3D en este navegador: se queda el plano.', err); return; }
+  $('conmutador').hidden = false;
+  let guardada = '3d';
+  try { guardada = localStorage.getItem('fondo-vista') || '3d'; } catch (err) {}
+  ponerVista(guardada === 'plano' ? 'plano' : '3d');
+  if (estado) Oficina.actualizar(estado);
+};
+$('conmutador').addEventListener('click', ev => { if (ev.target.dataset.vista) ponerVista(ev.target.dataset.vista); });
+$('of-mas').addEventListener('click', () => Oficina && Oficina.acercar(0.78));
+$('of-menos').addEventListener('click', () => Oficina && Oficina.acercar(1.28));
+$('of-centro').addEventListener('click', () => Oficina && Oficina.centrar());
+
+let espera;
+addEventListener('resize', () => { clearTimeout(espera); espera = setTimeout(() => estado && pintarGrafica(), 150); });
+cargar();
+setInterval(cargar, 5000);
+</script>
+<script type="module">
+import('/static/oficina.js').then(m => window.__montarOficina(m.crear)).catch(err => console.warn('No se pudo cargar la oficina 3D.', err));
+</script>
+</body>
+</html>

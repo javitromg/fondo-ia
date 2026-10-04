@@ -1,0 +1,130 @@
+# Configuración del fondo. Todo lo que no pongas aquí usa el valor por defecto de fondo/config.py
+
+exchange: krakenfutures         # Kraken Pro, perpetuos (cualquier exchange soportado por ccxt)
+simbolos:                       # perpetuos lineales en USD. Los que el exchange no tenga se saltan y `descargar` lo avisa
+  - BTC/USD:USD
+  - ETH/USD:USD
+  - SOL/USD:USD
+  - XRP/USD:USD
+  - DOGE/USD:USD
+  - LTC/USD:USD
+  - BNB/USD:USD
+  - ADA/USD:USD
+  - LINK/USD:USD
+  - AVAX/USD:USD
+  - DOT/USD:USD
+  - BCH/USD:USD
+  - TRX/USD:USD
+  - UNI/USD:USD
+  - AAVE/USD:USD
+  - ATOM/USD:USD
+  - NEAR/USD:USD
+  - SUI/USD:USD
+  - APT/USD:USD
+  - ARB/USD:USD
+  - OP/USD:USD
+  - INJ/USD:USD
+  - FIL/USD:USD
+  - XLM/USD:USD
+timeframes: [1h, 4h, 1d]        # 1h y 4h se minan; 1d lo usan los modelos publicados de la biblioteca
+historia_dias: 1095             # 3 años
+historia_por_tf: {1d: 3650}     # de las velas diarias se baja todo lo que el exchange tenga
+
+costes:                         # por lado, en tanto por uno
+  comision: 0.0005              # taker Kraken 0,05 %
+  slippage: 0.0004              # 0,04 % de deslizamiento supuesto (las altcoins en Kraken tienen menos liquidez)
+  funding_8h: 0.0001            # se usa solo si no hay histórico de funding descargado
+
+dimensionado:
+  vol_objetivo_anual: 0.20      # cada estrategia apunta a un 20 % de volatilidad anual
+  apalancamiento_max: 2.0
+  ventana_vol: 72               # velas para medir la volatilidad
+
+mineria:
+  timeframes: [1h, 4h]          # los que se minan
+  modo: cartera                 # cartera = mismos parámetros en todos los símbolos (difícil de sobreajustar) | individual | ambos
+  pruebas_cartera: 150          # combinaciones por estrategia y timeframe en modo cartera
+  pruebas_por_estrategia: 300   # combinaciones aleatorias por estrategia y por símbolo/timeframe
+  semilla: 42
+  max_por_grupo: 3              # máximo de candidatas por (símbolo, timeframe, estrategia)
+  tramos: {entrenamiento: 0.6, validacion: 0.2, reserva: 0.2}
+  filtros: {trades_min: 40, sharpe_min: 1.0, pf_min: 1.2, dd_max: 0.30}
+
+robustez:
+  validacion: {sharpe_min: 0.5, pf_min: 1.05, retencion_min: 0.4}
+  tramos: {n: 6, pct_positivos_min: 0.6}
+  montecarlo: {simulaciones: 1000, p5_retorno_min: 0.0, p95_dd_max: 0.35}
+  vecindad: {perturbacion: 0.15, pct_rentables_min: 0.7, retencion_mediana_min: 0.5}
+  estres_costes: {multiplicador: 2.0}
+  reserva: {sharpe_min: 0.5, pf_min: 1.05}   # tramo final que no se toca hasta el último filtro
+  dsr_min: 0.0                  # Sharpe deflactado como filtro extra (0 = solo informativo; 0.9 = muy estricto)
+  control_ruido: {rondas: 9}    # repite la minería sobre ruido; con menos de 9 rondas no se puede afirmar nada (p = 1/(rondas+1))
+
+aprendizaje:
+  cada_dias: 7                  # cada cuánto se vuelve a minar con los datos más recientes (modo auto)
+
+rrhh:                           # Selección de personal
+  plantilla_objetivo: 30        # bots que se quiere tener entre incubadora y fondo
+  descanso_horas: 24            # si faltan bots, como mucho una búsqueda extra cada tantas horas
+
+auditoria:
+  dias_min: 7                   # rodaje mínimo antes de juzgar a un bot
+  trades_min: 3
+  percentil_min: 0.05           # por debajo de esto, rinde peor de lo que explica la mala suerte: despido
+  desvio_max: 0.03              # diferencia tolerada entre lo hecho en vivo y la simulación de esas fechas
+
+incubadora:
+  max_estrategias: 90           # tope de estrategias a prueba a la vez
+  capital_nocional: 10000       # capital ficticio por estrategia mientras está en pruebas
+  velas_historia: 1000
+  dias_min: 21                  # antes de esto nadie recibe capital
+  dias_max: 90                  # si en este plazo no cumple, se descarta
+  trades_min: 10
+  sharpe_min: 0.5
+  dd_max: 0.15                  # si cae más que esto, fuera (en incubadora) o sin capital (en el fondo)
+  por_tf: {1d: {trades_min: 3, dias_max: 180}}   # un bot de velas diarias opera poco: menos operaciones exigidas y más plazo
+
+biblioteca:                     # modelos publicados con reglas fijas (no se minan: se contratan tal cual y se vigilan)
+  rondas: 99                    # rondas de ruido para comparar su histórico con la suerte
+  velas_min: 500                # histórico mínimo por moneda para contar con ella
+  cada_dias: 7                  # cada cuánto se repite la comparación con los datos nuevos
+
+analistas:                      # sentimiento, noticias y debate. Informan; no deciden nada
+  activo: true
+  cada_horas: 4                 # cada cuánto se leen el índice de miedo y codicia y los titulares
+  titulares_max: 40
+  fuentes:                      # RSS públicos; un medio que falle no impide leer los demás
+    CoinDesk: https://www.coindesk.com/arc/outboundfeeds/rss/
+    Cointelegraph: https://cointelegraph.com/rss
+    Decrypt: https://decrypt.co/feed
+  modelo: claude-haiku-4-5-20251001   # modelo de lenguaje; solo se usa si pegas tu clave en llm_clave.txt
+  llamadas_dia_max: 20          # tope de consultas al modelo por día (lo normal son 9)
+
+riesgos:
+  capital: 10000                # capital del fondo (en papel hasta la fase real)
+  perdida_diaria_max: 0.02      # -2 % en el día: se cierra todo y no se abre nada hasta mañana
+  caida_max: 0.10               # -10 % desde máximos: KILL SWITCH, solo se reactiva a mano
+  exposicion_bruta_max: 2.0
+  exposicion_neta_max: 1.0
+  exposicion_simbolo_max: 0.75
+  peso_max_estrategia: 0.25
+  peso_max_simbolo: 0.35         # tope de capital entre todos los bots que operan la misma moneda
+  peso_max_apuesta: 0.5          # tope de capital entre todos los bots que siguen la misma idea (lo vigila Cartera)
+  racha_min: 6                  # modo seguro: un bot se para si encadena más pérdidas que nunca en su histórico (mínimo estas)
+  pausa_bot_horas: 24           # y se queda fuera del mercado este tiempo
+
+panel:
+  puerto: 8765                  # http://localhost:8765. En la nube manda la variable PORT
+  sesion_dias: 30               # cuánto dura la sesión una vez puesta la contraseña (FONDO_CLAVE_PANEL o panel_clave.txt)
+
+vigilante:
+  minutos: 10                   # si la mesa lleva más de esto sin completar un ciclo, aviso por Telegram
+
+copias:
+  dias: 7                       # copias diarias de la base que se guardan
+  telegram: true                # y una a la semana, comprimida, a tu chat de Telegram (fuera del servidor)
+
+rutas:
+  datos: datos
+  bd: fondo.db
+  informes: informes
