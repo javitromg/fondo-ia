@@ -33,7 +33,7 @@ DEFECTO = {
         "estres_costes": {"multiplicador": 2.0},
         "reserva": {"sharpe_min": 0.5, "pf_min": 1.05},
         "dsr_min": 0.0,
-        "control_ruido": {"rondas": 9},
+        "control_ruido": {"rondas": 9, "p_max": 0.10},
     },
     "aprendizaje": {"cada_dias": 7},
     "rrhh": {"plantilla_objetivo": 30, "descanso_horas": 24},
@@ -52,6 +52,7 @@ DEFECTO = {
         "dd_max": 0.15,
         "por_tf": {"1d": {"trades_min": 3, "dias_max": 180}},   # un bot de velas diarias opera poco: se le da más plazo
     },
+    "comite": {"max_con_capital": None, "margen_relevo": 0.5},      # None = sin tope de plazas con capital
     "biblioteca": {"rondas": 99, "velas_min": 500, "cada_dias": 7},
     "analistas": {
         "activo": True,

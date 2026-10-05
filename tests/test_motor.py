@@ -1399,3 +1399,75 @@ def test_el_debate_se_recorta_y_se_rehace_si_cita_cifras_que_no_estan_en_la_hoja
     assert "Aviso: cita cifras que no están en la hoja de datos: 42, 2022" in r["bajista"] and r["sin_respaldo"] == 2   # si insiste, se dice
     assert len(r["bajista"].split()) < analistas.PALABRAS_MAX + 20 and r["conclusion"] == "Coinciden en el 19 %."
     assert al.get("llm:total")["llamadas"] == 5 and "histórico" in pedidos[0]["system"]
+
+
+# ------------------------------------------------------------------ fondo elitista: plazas limitadas y relevo
+
+
+def _aspirante(al, nombre, alta, diario, dias=40, trades=12):
+    """Bot en incubadora con `dias` de rodaje y una curva que sube `diario` de media (con algo de vaivén)."""
+    eid = al.alta_estrategia(nombre, "1h", "macd", {"rapida": 12}, "incubadora", {}, alta)
+    c = al.nueva_cuenta(eid, "incubadora", 10000, alta)
+    nav = 1.0
+    for d in range(1, dias + 1):
+        nav *= 1 + diario + (0.004 if d % 2 else -0.004)
+        al.apuntar_equity(alta + pd.Timedelta(days=d), eid, nav)
+    c.update(nav=nav, pico=nav, trades=trades, ultima_vela=str(alta))
+    al.guardar_cuenta(c)
+    return eid
+
+
+def test_el_capital_es_para_los_mejores_plazas_limitadas_y_relevo_del_peor():
+    al = Almacen(":memory:")
+    cfg = {**CFG, "comite": {"max_con_capital": 2, "margen_relevo": 0.5}}
+    mesa = Mesa(cfg, al, None)
+    alta = pd.Timestamp("2026-01-01", tz="UTC")
+    flojo, bueno, mejor = (_aspirante(al, n, alta, d) for n, d in (("FLOJO", 0.0006), ("BUENO", 0.0012), ("MEJOR", 0.002)))
+    raro = _aspirante(al, "RARO", alta, 0.003)
+    al.set(f"auditoria:{raro}", {"estado": "desvio", "percentil": 0.9})
+    hoy = alta + pd.Timedelta(days=40)
+    acta = comite.reunir(mesa, hoy)
+    con_capital = {e["simbolo"] for e in al.estrategias(("aprobada",))}
+    assert con_capital == {"MEJOR", "BUENO"} and len(acta["promocionadas"]) == 2      # dos plazas: entran los dos mejores, no los dos primeros
+    assert {e["simbolo"] for e in al.estrategias(("incubadora",))} == {"FLOJO", "RARO"}   # el que no se parece a su simulación no entra aunque gane más
+    assert any(ev["tipo"] == "espera" and "1 bots cumplen" in ev["mensaje"] for ev in al.eventos(20))
+    n = len(al.eventos(50))
+    comite.reunir(mesa, hoy + pd.Timedelta(hours=1))
+    assert len(al.eventos(50)) == n                                                    # la lista de espera no se repite cada día si no cambia
+
+    # pasa el rodaje de los titulares y llega uno claramente mejor que el peor de ellos: le quita el sitio
+    for eid, diario in ((mejor, 0.002), (bueno, 0.0002)):
+        c = al.cuenta(eid)
+        nav = 1.0
+        for d in range(1, 36):
+            nav *= 1 + diario + (0.004 if d % 2 else -0.004)
+            al.apuntar_equity(pd.Timestamp(c["alta"]) + pd.Timedelta(days=d), eid, nav)
+        c.update(nav=nav, pico=max(nav, 1.0))
+        al.guardar_cuenta(c)
+    al.estado_estrategia(flojo, "descartada", hoy)
+    al.set(f"auditoria:{raro}", {"estado": "en_linea", "percentil": 0.9})
+    despues = hoy + pd.Timedelta(days=36)
+    acta = comite.reunir(mesa, despues)
+    assert {e["simbolo"] for e in al.estrategias(("aprobada",))} == {"MEJOR", "RARO"}
+    assert len(acta["promocionadas"]) == 1 and len(acta["retiradas"]) == 1 and al.cuenta(bueno)["fase"] == "incubadora"
+    assert any("le quita el sitio" in ev["mensaje"] and "BUENO" in ev["mensaje"] for ev in al.eventos(20))
+    assert mesa.equity_fondo() == pytest.approx(CFG["riesgos"]["capital"], rel=1e-6)   # y en el relevo no se pierde ni aparece dinero
+
+    sin_tope = Mesa(CFG, Almacen(":memory:"), None)                                    # sin tope configurado, todo sigue como antes
+    for nombre in ("A", "B", "C"):
+        _aspirante(sin_tope.al, nombre, alta, 0.0015)
+    assert len(comite.reunir(sin_tope, hoy)["promocionadas"]) == 3
+
+
+def test_el_liston_de_evidencia_se_puede_subir_y_entonces_piden_mas_rondas_de_ruido():
+    import copy
+    datos = {("RUIDO", "1h"): (data.sintetico(3000, "aleatorio", semilla=3), None)}
+    cfg = copy.deepcopy(CFG)
+    cfg["mineria"]["pruebas_por_estrategia"] = 2
+    cfg["robustez"]["control_ruido"] = {"rondas": 9, "p_max": 0.05}
+    r = pipeline.ejecutar(datos, cfg, aviso=None)
+    assert not r["evidencia"] and r["p_valor"] >= 0.1                                  # con 9 rondas lo mejor posible es p = 0,10: no llega a 0,05
+    yaml_real = config.cargar("config.yaml")
+    assert yaml_real["robustez"]["control_ruido"] == {"rondas": 19, "p_max": 0.05} and yaml_real["comite"]["max_con_capital"] == 10
+    assert yaml_real["incubadora"]["dias_min"] == 30 and yaml_real["incubadora"]["sharpe_min"] == 1.0 and yaml_real["incubadora"]["dd_max"] == 0.10
+    assert yaml_real["incubadora"]["por_tf"]["1d"]["trades_min"] == 3                  # y los plazos de los bots diarios siguen ahí

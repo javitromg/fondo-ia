@@ -1,7 +1,9 @@
 """Comité de inversión: decide quién sale de la incubadora, a quién se le quita capital y cómo se reparte.
 
 Reglas fijas, no opinables:
-- Incubadora -> fondo: tiempo mínimo, operaciones mínimas, Sharpe mínimo y en positivo.
+- Incubadora -> fondo: tiempo mínimo, operaciones mínimas, Sharpe mínimo, en positivo y sin que Auditoría vea que en vivo no
+  se parece a su simulación. Las plazas con capital son limitadas (comite.max_con_capital): entran primero los mejores, y un
+  aspirante claramente mejor que el peor titular le quita el sitio.
 - Incubadora -> descartada: supera la caída máxima, o agota el plazo máximo sin cumplir.
 - Fondo -> incubadora: supera la caída máxima con capital asignado (se le retira el capital).
 - Auditoría: si un bot rinde por debajo de lo que explica la mala suerte, se le despide (incubadora) o se le retira el capital (fondo).
@@ -19,8 +21,9 @@ from .paper import Mesa, estadisticas
 
 
 def reunir(mesa: Mesa, ahora: pd.Timestamp) -> dict:
-    al, base = mesa.al, mesa.cfg["incubadora"]
+    al, base, reglas = mesa.al, mesa.cfg["incubadora"], mesa.cfg.get("comite") or {}
     acta = {"promocionadas": [], "descartadas": [], "retiradas": [], "pesos": {}}
+    aspirantes, titulares = [], []          # quien cumple para recibir capital y quien ya lo tiene, con sus números
 
     for e in al.estrategias(("incubadora", "aprobada")):
         c = al.cuenta(e["id"])
@@ -29,7 +32,8 @@ def reunir(mesa: Mesa, ahora: pd.Timestamp) -> dict:
         inc = {**base, **(base.get("por_tf") or {}).get(e["tf"], {})}       # los bots de velas diarias tienen sus propios plazos
         s = estadisticas(al.curva(e["id"], c["alta"]), c, ahora)
         etiqueta = f"#{e['id']} {e['nombre']} {e['simbolo']} {e['tf']}"
-        decae = (al.get(f"auditoria:{e['id']}") or {}).get("estado") == "decaimiento"
+        auditoria = (al.get(f"auditoria:{e['id']}") or {}).get("estado")
+        decae = auditoria == "decaimiento"
         if c["fase"] == "incubadora":
             if decae:
                 _descartar(mesa, e, c, ahora, f"Auditoría: {s['retorno']:+.1%} en {s['dias']:.0f} días, por debajo de lo que explica la mala suerte")
@@ -37,12 +41,9 @@ def reunir(mesa: Mesa, ahora: pd.Timestamp) -> dict:
             elif s["dd_max"] > inc["dd_max"]:
                 _descartar(mesa, e, c, ahora, f"caída del {s['dd_max']:.1%} en incubadora")
                 acta["descartadas"].append(etiqueta)
-            elif s["dias"] >= inc["dias_min"] and s["trades"] >= inc["trades_min"] and s["sharpe"] >= inc["sharpe_min"] and s["retorno"] > 0:
-                _a_fondo(mesa, e, c, ahora)
-                rrhh.anotar_destino(al, e["nombre"], "promocionadas")
-                acta["promocionadas"].append(etiqueta)
-                al.evento(ahora, "Comité", "promocion", f"{etiqueta} sale de la incubadora: {s['dias']:.0f} días, {s['trades']} operaciones, "
-                                                         f"Sharpe {s['sharpe']:.2f}, {s['retorno']:+.1%}. Se le asigna capital.")
+            elif (s["dias"] >= inc["dias_min"] and s["trades"] >= inc["trades_min"] and s["sharpe"] >= inc["sharpe_min"] and s["retorno"] > 0
+                  and auditoria != "desvio"):        # si en vivo no se parece a su simulación, no se le da dinero
+                aspirantes.append((s["sharpe"], e, c, s, etiqueta))
             elif s["dias"] >= inc["dias_max"]:
                 _descartar(mesa, e, c, ahora, f"{s['dias']:.0f} días en incubadora sin cumplir los mínimos "
                                               f"({s['trades']} operaciones, Sharpe {s['sharpe']:.2f}, {s['retorno']:+.1%})")
@@ -53,6 +54,37 @@ def reunir(mesa: Mesa, ahora: pd.Timestamp) -> dict:
             al.set(f"auditoria:{e['id']}", None)       # empieza de cero en la incubadora
             acta["retiradas"].append(etiqueta)
             al.evento(ahora, "Comité", "retirada", f"{etiqueta}: {motivo}. Se le retira el capital y vuelve a la incubadora.")
+        else:
+            titulares.append((s["sharpe"], e, c, s, etiqueta, inc))
+
+    # el capital es para los mejores: plazas limitadas, entran primero los de mejor Sharpe en vivo, y un aspirante
+    # claramente mejor que el peor titular le quita el sitio
+    tope, margen = reglas.get("max_con_capital"), reglas.get("margen_relevo", 0.5)
+    aspirantes.sort(key=lambda x: -x[0])
+    titulares.sort(key=lambda x: x[0])
+    espera = 0
+    for sharpe, e, c, s, etiqueta in aspirantes:
+        if tope is not None and len(titulares) >= tope:
+            peor = titulares[0] if titulares else None
+            if peor is None or peor[3]["dias"] < peor[5]["dias_min"] or sharpe < peor[0] + margen:
+                espera += 1
+                continue
+            _a_incubadora(mesa, peor[1], peor[2], ahora)
+            al.set(f"auditoria:{peor[1]['id']}", None)
+            acta["retiradas"].append(peor[4])
+            al.evento(ahora, "Comité", "retirada", f"{peor[4]}: le quita el sitio {etiqueta}, que lo hace claramente mejor en vivo "
+                                                    f"(Sharpe {sharpe:.2f} frente a {peor[0]:.2f}). Vuelve a la incubadora.")
+            titulares.pop(0)
+        _a_fondo(mesa, e, c, ahora)
+        rrhh.anotar_destino(al, e["nombre"], "promocionadas")
+        acta["promocionadas"].append(etiqueta)
+        titulares.append((sharpe, e, c, {**s, "dias": 0.0}, etiqueta, base))        # recién llegado: no se le releva hasta que lleve su rodaje
+        titulares.sort(key=lambda x: x[0])
+        al.evento(ahora, "Comité", "promocion", f"{etiqueta} sale de la incubadora: {s['dias']:.0f} días, {s['trades']} operaciones, "
+                                                 f"Sharpe {s['sharpe']:.2f}, {s['retorno']:+.1%}. Se le asigna capital.")
+    if espera and al.get("comite:espera") != espera:
+        al.evento(ahora, "Comité", "espera", f"{espera} bots cumplen los mínimos pero las {tope} plazas con capital están ocupadas por otros mejores o demasiado recientes. Siguen en la incubadora.")
+    al.set("comite:espera", espera)
 
     acta["pesos"] = _repartir(mesa, ahora)
     resumen = (f"Comité: {len(acta['promocionadas'])} promocionadas, {len(acta['retiradas'])} retiradas, "

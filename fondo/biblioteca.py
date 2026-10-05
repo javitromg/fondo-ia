@@ -98,7 +98,7 @@ def evaluar(nombre: str, u: miner.Universo, cfg: dict, rondas: int | None = None
         "por_anio": [{"anio": int(y), "modelo": float(a_mod[y]), "referencia": float(a_ref[y])} for y in a_mod.index],
         "ruido": {"rondas": rondas, "sharpe_medio": float(np.mean(falsos)) if falsos else None,
                   "sharpe_p95": float(np.percentile(falsos, 95)) if falsos else None},
-        "p_valor": p, "evidencia": bool(p is not None and p <= 0.10),
+        "p_valor": p, "evidencia": bool(p is not None and p <= cfg["robustez"].get("control_ruido", {}).get("p_max", 0.10)),
         "mejora": bool(real["sharpe"] > 0 and real["sharpe"] > _resumen(ref)["sharpe"]),
     }
 

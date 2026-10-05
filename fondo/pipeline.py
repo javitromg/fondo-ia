@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import math
 
 import numpy as np
 import pandas as pd
@@ -40,7 +41,7 @@ def ejecutar(datos: dict, cfg: dict, progreso=None, aviso=print, pesos: dict | N
     Además de minar los datos reales, repite el proceso entero sobre versiones "placebo" de esos
     mismos datos. El veredicto es un contraste estadístico: ¿en cuántas rondas de ruido salen
     tantos hallazgos como en los datos reales? Si pasa a menudo, lo encontrado es suerte.
-    Con K rondas, lo mejor que se puede afirmar es p = 1/(K+1); por eso hacen falta al menos 9.
+    Con K rondas, lo mejor que se puede afirmar es p = 1/(K+1); por eso hacen falta al menos 9 (19 si se exige p <= 0,05).
     """
     real = _ronda(datos, cfg, progreso, pesos)
     vivos, hallazgos = sum(1 for x in real["resultados"] if x["sobrevive"]), _grupos(real["resultados"])
@@ -54,7 +55,8 @@ def ejecutar(datos: dict, cfg: dict, progreso=None, aviso=print, pesos: dict | N
         falsos = {clave: (_placebo(df, 7919 * (k + 1) + i), f) for i, (clave, (df, f)) in enumerate(datos.items())}
         placebo.append(_grupos(_ronda(falsos, cfg_k, None, pesos)["resultados"]))
     p_valor = (1 + sum(1 for x in placebo if x >= hallazgos)) / (rondas + 1) if rondas else None
-    evidencia = bool(hallazgos > 0 and p_valor is not None and p_valor <= 0.10)
+    p_max = cfg["robustez"].get("control_ruido", {}).get("p_max", 0.10)
+    evidencia = bool(hallazgos > 0 and p_valor is not None and p_valor <= p_max)
     if not rondas:
         veredicto = "Sin control de ruido: no se puede saber cuánto de esto es suerte."
     elif hallazgos == 0:
@@ -65,7 +67,7 @@ def ejecutar(datos: dict, cfg: dict, progreso=None, aviso=print, pesos: dict | N
     else:
         iguala = sum(1 for x in placebo if x >= hallazgos)
         motivo = (f"el ruido puro igualó o superó ese número en {iguala} de {rondas} rondas" if iguala
-                  else f"con solo {rondas} rondas de ruido no se puede afirmar nada (harían falta 9)")
+                  else f"con solo {rondas} rondas de ruido no se puede afirmar nada (harían falta {math.ceil(1 / p_max) - 1})")
         veredicto = (f"Sin evidencia de ventaja: {hallazgos} hallazgos distintos en datos reales y {motivo} "
                      f"(ruido: {placebo}, p = {p_valor:.2f}). Lo encontrado es compatible con la suerte.")
     return {**real, "supervivientes": vivos, "hallazgos": hallazgos, "placebo": placebo, "p_valor": p_valor,

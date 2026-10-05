@@ -58,7 +58,7 @@ robustez:
   estres_costes: {multiplicador: 2.0}
   reserva: {sharpe_min: 0.5, pf_min: 1.05}   # tramo final que no se toca hasta el último filtro
   dsr_min: 0.0                  # Sharpe deflactado como filtro extra (0 = solo informativo; 0.9 = muy estricto)
-  control_ruido: {rondas: 9}    # repite la minería sobre ruido; con menos de 9 rondas no se puede afirmar nada (p = 1/(rondas+1))
+  control_ruido: {rondas: 19, p_max: 0.05}   # repite la minería sobre ruido 19 veces y solo contrata si lo real gana a todas (p <= 0,05)
 
 aprendizaje:
   cada_dias: 7                  # cada cuánto se vuelve a minar con los datos más recientes (modo auto)
@@ -77,12 +77,16 @@ incubadora:
   max_estrategias: 90           # tope de estrategias a prueba a la vez
   capital_nocional: 10000       # capital ficticio por estrategia mientras está en pruebas
   velas_historia: 1000
-  dias_min: 21                  # antes de esto nadie recibe capital
+  dias_min: 30                  # antes de esto nadie recibe capital
   dias_max: 90                  # si en este plazo no cumple, se descarta
   trades_min: 10
-  sharpe_min: 0.5
-  dd_max: 0.15                  # si cae más que esto, fuera (en incubadora) o sin capital (en el fondo)
+  sharpe_min: 1.0
+  dd_max: 0.10                  # si cae más que esto, fuera (en incubadora) o sin capital (en el fondo)
   por_tf: {1d: {trades_min: 3, dias_max: 180}}   # un bot de velas diarias opera poco: menos operaciones exigidas y más plazo
+
+comite:                         # fondo elitista: el capital es solo para los mejores
+  max_con_capital: 10           # plazas con capital. Entran primero los de mejor Sharpe en vivo
+  margen_relevo: 0.5            # un aspirante le quita el sitio al peor titular si su Sharpe es mejor por al menos esto
 
 biblioteca:                     # modelos publicados con reglas fijas (no se minan: se contratan tal cual y se vigilan)
   rondas: 99                    # rondas de ruido para comparar su histórico con la suerte

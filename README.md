@@ -219,6 +219,20 @@ En `fondo/strategies.py`, una función que devuelva +1 / -1 / 0 por vela usando 
 esa vela, decorada con `@estrategia({...espacio de parámetros...})`. El test
 `test_ninguna_estrategia_mira_al_futuro` la comprueba automáticamente.
 
+## Fondo elitista: a quién se le da capital
+
+El listón para pasar de la incubadora al fondo (`config.yaml`):
+
+- **30 días** de rodaje en papel como mínimo, **Sharpe en vivo de 1,0 o más**, resultado positivo y las operaciones mínimas.
+- Auditoría no puede estar diciendo que lo que hace en vivo no se parece a su simulación.
+- Quien cae más de un **10 %** en pruebas, fuera; con capital, se le retira.
+- Solo hay **10 plazas con capital** (`comite.max_con_capital`). Entran primero los de mejor Sharpe en vivo. Con las plazas llenas, un
+  aspirante le quita el sitio al peor titular si lo mejora por al menos 0,5 de Sharpe y el titular ya lleva su rodaje.
+- La minería solo contrata si lo encontrado gana a las **19 rondas de ruido** (p ≤ 0,05).
+
+Con estas reglas puede pasar un mes entero sin nadie con capital. Un Sharpe medido en 30 días tiene mucho de suerte: el listón
+filtra, no certifica.
+
 ## Ponerlo en un servidor (Railway u otro)
 
 El proyecto trae `Dockerfile` y `arrancar.sh` (el equivalente a `INICIAR.bat` en Linux). En el servidor hace falta:
