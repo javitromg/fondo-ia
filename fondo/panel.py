@@ -116,7 +116,7 @@ def estado(cfg: dict, al: Almacen, ahora: pd.Timestamp) -> dict:
     if ultima:
         proxima = str(pd.Timestamp(ultima["ts"]) + pd.Timedelta(days=cfg["aprendizaje"]["cada_dias"]))
     return {
-        "ahora": str(ahora), "exchange": cfg["exchange"], "modo": "papel", "capacidades": ["comite"],
+        "ahora": str(ahora), "exchange": cfg["exchange"], "modo": al.get("modo_ejecucion") or "papel", "capacidades": ["comite"],
         "telegram": {"vinculado": bool(al.get("telegram_chat")), "bot": al.get("telegram_bot"), "error": al.get("telegram_error")},
         "departamentos": [f[0] for f in al.db.execute("SELECT DISTINCT origen FROM eventos")],
         "plantilla": {"hay": rrhh.plantilla(al), "objetivo": cfg["rrhh"]["plantilla_objetivo"]},

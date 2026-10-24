@@ -52,6 +52,7 @@ DEFECTO = {
         "dd_max": 0.15,
         "por_tf": {"1d": {"trades_min": 3, "dias_max": 180}},   # un bot de velas diarias opera poco: se le da más plazo
     },
+    "ejecucion_real": {"min_orden_usd": 10.0, "tolerancia": 0.05, "revisar_cada_min": 15},   # solo cuenta si FONDO_MODO es demo o real
     "comite": {"max_con_capital": None, "margen_relevo": 0.5},      # None = sin tope de plazas con capital
     "biblioteca": {"rondas": 99, "velas_min": 500, "cada_dias": 7},
     "analistas": {

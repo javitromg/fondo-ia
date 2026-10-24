@@ -263,9 +263,23 @@ Lo que vigila al fondo cuando no lo miras:
 - **Informe semanal.** Los lunes, por Telegram: resultado de la semana, mejores y peores bots, movimientos del comité, incidencias
   y consumo del modelo de lenguaje.
 
+## Operar en Kraken (demo o real)
+
+Apagado por defecto. Se enciende con variables que pones tú en el servidor; el programa nunca enseña las claves.
+
+| Variable | Para qué |
+|---|---|
+| `FONDO_MODO` | `papel` (por defecto), `demo` (entorno de pruebas de Kraken Futures, dinero ficticio) o `real`. |
+| `KRAKEN_API_KEY` y `KRAKEN_API_SECRET` | Claves de Kraken **Futures**. En demo, las de la cuenta de pruebas (demo-futures.kraken.com), que son otras. En real: permiso para operar, **nunca para retirar**. |
+| `FONDO_CAPITAL_MAX` | Obligatoria en real: dólares de la cuenta que el fondo puede usar como mucho. |
+
+Qué hace: copia en la cuenta la exposición de los **bots con capital** (los de la incubadora siguen en papel), como fracción del
+capital disponible, con órdenes a mercado. Si el fondo para por el kill switch o la pérdida diaria, cierra también en Kraken.
+Solo toca las monedas del fondo; aun así, mejor una subcuenta dedicada solo al fondo. Cada orden avisa por Telegram.
+
+Recomendación: al menos unas semanas en `demo` antes de `real`, y en `real` empezar con un tope que no te importe perder.
+
 ## Lo que falta
 
-- **Ejecución real.** Un ejecutor de órdenes contra Kraken con claves API sin permiso de retirada,
-  empezando con capital mínimo. No tiene sentido antes de que algo sobreviva semanas en la incubadora.
 - **Calendario macro.** Un filtro que reduzca riesgo alrededor de eventos macro (tipos, IPC). Habría que
   probarlo antes contra el histórico, como todo lo demás.

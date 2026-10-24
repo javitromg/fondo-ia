@@ -20,7 +20,7 @@ from . import panel
 from .paper import Mesa
 from .store import Almacen
 
-AVISAR = ("kill", "pausa", "modo_seguro", "acta", "decaimiento", "desvio", "convocatoria", "resultado", "cierre", "error", "reinicio", "regimen", "calidad", "descuadre", "costes", "sentimiento", "alerta", "conclusion", "semanal", "caida")
+AVISAR = ("kill", "pausa", "modo_seguro", "acta", "decaimiento", "desvio", "convocatoria", "resultado", "cierre", "error", "reinicio", "regimen", "calidad", "descuadre", "costes", "sentimiento", "alerta", "conclusion", "semanal", "caida", "orden_real", "modo")
 AYUDA = ("/estado: cómo va el fondo\n/liga: ranking de bots\n/analisis: mercado, sentimiento, noticias y debate del día\n/parar: cerrar todo y dejar de operar\n"
          "/reanudar: volver a operar\n/ayuda: esta lista")
 

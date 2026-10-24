@@ -1471,3 +1471,105 @@ def test_el_liston_de_evidencia_se_puede_subir_y_entonces_piden_mas_rondas_de_ru
     assert yaml_real["robustez"]["control_ruido"] == {"rondas": 19, "p_max": 0.05} and yaml_real["comite"]["max_con_capital"] == 10
     assert yaml_real["incubadora"]["dias_min"] == 30 and yaml_real["incubadora"]["sharpe_min"] == 1.0 and yaml_real["incubadora"]["dd_max"] == 0.10
     assert yaml_real["incubadora"]["por_tf"]["1d"]["trades_min"] == 3                  # y los plazos de los bots diarios siguen ahí
+
+
+# ------------------------------------------------------------------ ejecución en Kraken (demo o real), apagada por defecto
+
+
+class _KrakenCuenta:
+    """Cuenta de Kraken Futures de mentira: guarda las órdenes y mueve las posiciones como lo haría el exchange."""
+
+    def __init__(self, patrimonio=1000.0, posiciones=None):
+        self.patrimonio, self.pos, self.ordenes, self.romper = patrimonio, dict(posiciones or {}), [], False
+
+    def fetch_balance(self, params=None):
+        if self.romper:
+            raise OSError("Kraken no contesta")
+        return {"info": {"accounts": {"flex": {"portfolioValue": str(self.patrimonio)}}}, "total": {}}
+
+    def fetch_positions(self):
+        return [{"symbol": s, "contracts": abs(n), "contractSize": 1, "side": "long" if n > 0 else "short"} for s, n in self.pos.items() if n]
+
+    def amount_to_precision(self, s, x):
+        return f"{x:.4f}"
+
+    def market(self, s):
+        return {"limits": {"amount": {"min": 0.0001}}}
+
+    def create_order(self, s, tipo, lado, cantidad, precio, params):
+        self.ordenes.append((s, tipo, lado, cantidad, dict(params)))
+        self.pos[s] = round(self.pos.get(s, 0.0) + (cantidad if lado == "buy" else -cantidad), 6)
+
+
+def test_la_ejecucion_en_kraken_esta_apagada_salvo_que_tu_la_enciendas(monkeypatch):
+    from fondo import ejecutor
+    for k in ("FONDO_MODO", "KRAKEN_API_KEY", "KRAKEN_API_SECRET", "FONDO_CAPITAL_MAX"):
+        monkeypatch.delenv(k, raising=False)
+    al = Almacen(":memory:")
+    e = ejecutor.Ejecutor(CFG, al)
+    assert e.modo == "papel" and not e.activo and e.sincronizar(None, DF.index[0]) == [] and al.eventos(5) == []
+    monkeypatch.setenv("FONDO_MODO", "demo")
+    e = ejecutor.Ejecutor(CFG, al)
+    assert e.modo == "papel" and "faltan KRAKEN_API_KEY" in al.eventos(1)[0]["mensaje"]          # sin claves no hay demo
+    monkeypatch.setenv("FONDO_MODO", "real")
+    monkeypatch.setenv("KRAKEN_API_KEY", "clave-ficticia")
+    monkeypatch.setenv("KRAKEN_API_SECRET", "secreto-ficticio")
+    e = ejecutor.Ejecutor(CFG, al)
+    assert e.modo == "papel" and "sin FONDO_CAPITAL_MAX" in al.eventos(1)[0]["mensaje"]         # en real, sin tope de capital tampoco
+    monkeypatch.setenv("FONDO_MODO", "inventado")
+    assert ejecutor.modo() == "papel"
+    monkeypatch.setenv("FONDO_MODO", "real")
+    monkeypatch.setenv("FONDO_CAPITAL_MAX", "500")
+    assert ejecutor.capital_max() == 500.0 and "clave-ficticia" not in str(al.eventos(10))
+
+
+def test_la_cuenta_de_kraken_copia_solo_a_los_bots_con_capital_y_cierra_cuando_el_fondo_para(monkeypatch):
+    from fondo import ejecutor
+    monkeypatch.setenv("FONDO_MODO", "real")
+    monkeypatch.setenv("FONDO_CAPITAL_MAX", "500")
+    btc, eth = "BTC/USD:USD", "ETH/USD:USD"
+    cfg = {**CFG, "simbolos": [btc, eth]}
+    al = Almacen(":memory:")
+    ahora = DF.index[3000]
+    mesa = Mesa(cfg, al, FeedReplay({(btc, "1h"): DF, (eth, "1h"): DF}, CFG["costes"]["funding_8h"]))
+    mesa.feed.nuevo_ciclo(ahora)
+    precio = mesa.feed.precio(btc)
+    ids = {}
+    for s, fase, pos in ((btc, "fondo", 0.5), (eth, "fondo", -0.4), (eth, "incubadora", 1.0)):
+        eid = al.alta_estrategia(s, "1h", "macd", {"rapida": len(ids) + 5}, "aprobada" if fase == "fondo" else "incubadora", {}, ahora)
+        c = al.nueva_cuenta(eid, fase, 2500.0 if fase == "fondo" else 10000.0, ahora)
+        c["pos"] = pos
+        al.guardar_cuenta(c)
+        ids[(s, fase)] = eid
+    al.set("caja", 5000.0)                                          # fondo: 5.000 en caja + 2.500 + 2.500
+    kraken = _KrakenCuenta(patrimonio=2000.0, posiciones={"SOL/USD:USD": 3.0})
+    cuenta = ejecutor.Ejecutor(cfg, al, exchange=kraken, ahora=ahora)
+    assert cuenta.activo and "500 $" in al.eventos(1)[0]["mensaje"]
+    assert ejecutor.Ejecutor.objetivo(mesa) == {btc: pytest.approx(0.125), eth: pytest.approx(-0.1)}   # la incubadora no cuenta
+
+    hechas = cuenta.sincronizar(mesa, ahora)
+    assert len(hechas) == 2 and kraken.pos["SOL/USD:USD"] == 3.0                                  # lo que no es del fondo no se toca
+    assert kraken.pos[btc] == pytest.approx(0.125 * 500 / precio, abs=1e-4) and kraken.pos[eth] == pytest.approx(-0.1 * 500 / precio, abs=1e-4)   # tope de 500 $, no los 2.000
+    assert {o[2] for o in kraken.ordenes} == {"buy", "sell"} and all(o[1] == "market" and not o[4] for o in kraken.ordenes)
+    assert al.eventos(1)[0]["tipo"] == "orden_real" and "REAL" in al.eventos(1)[0]["mensaje"]
+    assert cuenta.sincronizar(mesa, ahora + pd.Timedelta(minutes=1)) == []                       # sin cambios no repite órdenes
+    assert cuenta.sincronizar(mesa, ahora + pd.Timedelta(minutes=20)) == []                      # y al revisar la cuenta, cuadra
+
+    for s in (btc, eth):                                            # el fondo para: en papel se cierra todo...
+        c = al.cuenta(ids[(s, "fondo")])
+        c["pos"] = 0.0
+        al.guardar_cuenta(c)
+    hechas = cuenta.sincronizar(mesa, ahora + pd.Timedelta(minutes=21))
+    assert len(hechas) == 2 and all(o[4] == {"reduceOnly": True} for o in kraken.ordenes[-2:])   # ...y en Kraken también, solo reduciendo
+    assert kraken.pos[btc] == pytest.approx(0, abs=1e-4) and kraken.pos[eth] == pytest.approx(0, abs=1e-4) and "cierra" in hechas[0]
+
+    kraken.romper = True
+    c = al.cuenta(ids[(btc, "fondo")])
+    c["pos"] = 0.3
+    al.guardar_cuenta(c)
+    for m in range(3):
+        assert cuenta.sincronizar(mesa, ahora + pd.Timedelta(minutes=30 + m)) == []
+    errores = [e for e in al.eventos(20) if e["tipo"] == "error"]
+    assert len(errores) == 1 and "Kraken no contesta" in errores[0]["mensaje"]                  # avisa una vez, no cada minuto
+    from fondo import telegram
+    assert "orden_real" in telegram.AVISAR

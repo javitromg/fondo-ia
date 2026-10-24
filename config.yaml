@@ -84,6 +84,11 @@ incubadora:
   dd_max: 0.10                  # si cae más que esto, fuera (en incubadora) o sin capital (en el fondo)
   por_tf: {1d: {trades_min: 3, dias_max: 180}}   # un bot de velas diarias opera poco: menos operaciones exigidas y más plazo
 
+ejecucion_real:                 # copia en Kraken lo que hacen los bots con capital. Se enciende con la variable FONDO_MODO (demo o real)
+  min_orden_usd: 10             # diferencias más pequeñas que esto no generan orden
+  tolerancia: 0.05              # ni las que sean menos del 5 % de la posición buscada
+  revisar_cada_min: 15          # aunque nada cambie en papel, cada tanto se comprueba que la cuenta cuadra
+
 comite:                         # fondo elitista: el capital es solo para los mejores
   max_con_capital: 10           # plazas con capital. Entran primero los de mejor Sharpe en vivo
   margen_relevo: 0.5            # un aspirante le quita el sitio al peor titular si su Sharpe es mejor por al menos esto

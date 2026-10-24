@@ -140,7 +140,7 @@ td .sub{display:block;color:var(--tenue);font-size:.85rem}
 <header class="barra">
   <div class="marca">Fondo IA<span id="exchange"></span></div>
   <div class="situacion">
-    <span class="pildora">Papel: sin dinero real</span>
+    <span class="pildora" id="modo">Papel: sin dinero real</span>
     <span class="pildora" id="mercado" hidden></span>
     <span class="pildora" id="situacion">Conectando</span>
     <span id="reloj"></span>
@@ -273,6 +273,9 @@ function pintar() {
   s.textContent = r.kill ? 'Parado' : colgado ? `Sin ciclar desde hace ${Math.round(e.sin_ciclar_s / 60)} min` : r.pausa ? 'En pausa hasta mañana' : 'Operando';
   s.className = 'pildora' + (r.kill ? ' parado' : r.pausa || colgado ? ' pausa' : '');
   $('salir').hidden = !e.protegido;
+  const m = $('modo');
+  m.textContent = {papel: 'Papel: sin dinero real', demo: 'Demo de Kraken: dinero ficticio', real: 'REAL: opera tu cuenta de Kraken'}[e.modo] || 'Papel: sin dinero real';
+  m.className = 'pildora' + (e.modo === 'real' ? ' parado' : e.modo === 'demo' ? ' pausa' : '');
 
   $('equity').innerHTML = num(f.equity) + '<small>$</small>';
   $('hoy').textContent = pct(f.hoy); $('hoy').className = signo(f.hoy);

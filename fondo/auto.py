@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import analistas, auditoria, biblioteca, comite, config, data, departamentos, panel, rrhh, telegram
+from . import analistas, auditoria, biblioteca, comite, config, data, departamentos, ejecutor, panel, rrhh, telegram
 from .store import FONDO
 from .feeds import FeedCCXT
 from .paper import Mesa
@@ -152,12 +152,17 @@ def ejecutar(cfg: dict, ruta_config: str, intervalo: int = 60, sin_panel: bool =
     al.evento(_ahora(), "Selección", "plantilla", f"Plantilla: {n} de {objetivo} bots. " + ("Está completa." if n >= objetivo else
               f"Mientras falten, pediré al laboratorio una búsqueda extra cada {cfg['rrhh']['descanso_horas']} horas como mucho."))
     al.commit()
+    cuenta = ejecutor.Ejecutor(cfg, al, ahora=_ahora())          # en papel no hace nada; en demo o real copia en Kraken al fondo
+    al.set("modo_ejecucion", cuenta.modo)
+    al.commit()
     departamentos.ronda(al, cfg, _ahora(), cierre=False)      # Macro, Cartera y Operaciones dicen cómo está la casa al abrir
     if not sin_panel:
         servidor = panel.arrancar(cfg)
         if servidor is not None:
             print(f"Panel: http://localhost:{servidor.server_address[1]}" + (" (con contraseña)" if panel.clave_panel(cfg) else ""), flush=True)
-    print("Modo automático en marcha (Ctrl+C para parar). Opera en papel: no mueve dinero real.")
+    print({"papel": "Modo automático en marcha (Ctrl+C para parar). Opera en papel: no mueve dinero real.",
+           "demo": "Modo automático en marcha en DEMO: copia las órdenes en el entorno de pruebas de Kraken (dinero ficticio).",
+           "real": "Modo automático en marcha en REAL: los bots con capital operan tu cuenta de Kraken."}[cuenta.modo], flush=True)
     tg = None
     registro = Path(cfg["rutas"]["informes"])
     registro.mkdir(parents=True, exist_ok=True)
@@ -221,6 +226,7 @@ def ejecutar(cfg: dict, ruta_config: str, intervalo: int = 60, sin_panel: bool =
                     proceso = subprocess.Popen([sys.executable, "-m", "fondo", "--config", ruta_config, "minar"], stdout=log, stderr=log)
 
             r = mesa.ciclo(ahora)
+            cuenta.sincronizar(mesa, ahora)
             al.set("latido", str(ahora))         # el vigilante y el panel miran esto para saber que la mesa sigue viva
             if al.get("ultimo_comite") != str(ahora.date()):
                 print(f"{ahora:%H:%M}", cierre_del_dia(mesa, cfg, ahora))
